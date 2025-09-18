@@ -1,0 +1,21 @@
+[tool.pyright]
+typeCheckingMode = "basic"
+reportOptionalMemberAccess = false
+reportOptionalCall = false
+reportOptionalIterable = false
+reportOptionalSubscript = false
+reportGeneralTypeIssues = false
+reportMissingTypeStubs = false
+
+[tool.pylint]
+load-plugins = ["pylint_pytorch"]
+
+[tool.mypy]
+ignore_missing_imports = true
+check_untyped_defs = false
+warn_return_any = false
+warn_unused_ignores = false
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
