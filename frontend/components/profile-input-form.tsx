@@ -5,11 +5,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Upload, Link, FileText, Camera, User } from 'lucide-react'
+import { Upload, Link, FileText, Camera, User, Zap, CheckCircle } from 'lucide-react'
 import { useDropzone } from 'react-dropzone'
 
 interface ProfileInputFormProps {
-  onSubmit?: (data: { url?: string; file?: File; analysisType: string }) => Promise<void>
+  onSubmit?: (data: { 
+    url?: string; 
+    file?: File; 
+    analysisType: string;
+  }) => Promise<void>
   onAnalyze?: (data: {
     profileUrl?: string
     files: File[]
@@ -37,7 +41,7 @@ export function ProfileInputForm({ onSubmit, onAnalyze, isLoading = false }: Pro
     maxFiles: 10
   })
 
-    const handleSubmit = async () => {
+  const handleSubmit = async () => {
     if (analysisType === 'url' && !profileUrl.trim()) {
       alert('Please enter a profile URL')
       return
@@ -49,7 +53,7 @@ export function ProfileInputForm({ onSubmit, onAnalyze, isLoading = false }: Pro
     }
 
     if (onSubmit) {
-      // New dashboard callback
+      // New dashboard callback - now fully automated
       await onSubmit({
         url: analysisType === 'url' ? profileUrl : undefined,
         file: analysisType === 'upload' ? selectedFiles[0] : undefined,
@@ -77,10 +81,10 @@ export function ProfileInputForm({ onSubmit, onAnalyze, isLoading = false }: Pro
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <User className="h-6 w-6 text-blue-600" />
-          Profile Analysis
+          Profile Purity Analysis
         </CardTitle>
         <CardDescription>
-          Analyze social media profiles for trustworthiness using AI-powered analysis
+          Analyze social media profiles using multi-faceted AI detection (NLP, Computer Vision, Profile Metrics)
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -108,11 +112,44 @@ export function ProfileInputForm({ onSubmit, onAnalyze, isLoading = false }: Pro
           </Button>
         </div>
 
+        {/* Automatic Extraction Features */}
+        <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Zap className="h-5 w-5 text-green-600" />
+              Automatic Profile Extraction
+            </CardTitle>
+            <CardDescription>
+              Simply provide a profile URL - all metrics will be extracted automatically!
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <span className="text-sm">Follower & following counts</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <span className="text-sm">Post counts & engagement</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <span className="text-sm">Profile bio & description</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <span className="text-sm">Account age & verification</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* URL Input Form */}
         {analysisType === 'url' && (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="profileUrl">Profile URL</Label>
+              <Label htmlFor="profileUrl">Social Media Profile URL</Label>
               <Input
                 id="profileUrl"
                 type="url"
@@ -123,7 +160,7 @@ export function ProfileInputForm({ onSubmit, onAnalyze, isLoading = false }: Pro
                 className="w-full"
               />
               <p className="text-sm text-muted-foreground">
-                Supported platforms: Twitter, Instagram, LinkedIn, Facebook
+                Supported platforms: Instagram, Twitter/X, Facebook - All data extracted automatically!
               </p>
             </div>
             
@@ -136,15 +173,40 @@ export function ProfileInputForm({ onSubmit, onAnalyze, isLoading = false }: Pro
               {isLoading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  Analyzing Profile...
+                  Step 1: Extracting Profile Data...
                 </>
               ) : (
                 <>
-                  <User className="h-4 w-4 mr-2" />
-                  Analyze Profile
+                  <Zap className="h-4 w-4 mr-2" />
+                  Auto-Extract & Analyze Profile
                 </>
               )}
             </Button>
+            
+            {isLoading && (
+              <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+                <CardContent className="pt-6">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
+                      <span className="text-sm">Extracting profile data from URL...</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-muted-foreground">
+                      <div className="h-4 w-4 rounded-full border-2 border-gray-300" />
+                      <span className="text-sm">Running NLP analysis...</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-muted-foreground">
+                      <div className="h-4 w-4 rounded-full border-2 border-gray-300" />
+                      <span className="text-sm">Processing computer vision...</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-muted-foreground">
+                      <div className="h-4 w-4 rounded-full border-2 border-gray-300" />
+                      <span className="text-sm">Calculating trust score...</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </form>
         )}
 
@@ -255,9 +317,9 @@ export function ProfileInputForm({ onSubmit, onAnalyze, isLoading = false }: Pro
             <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900 w-fit mx-auto">
               <FileText className="h-5 w-5 text-blue-600" />
             </div>
-            <h4 className="font-medium text-sm">Text Analysis</h4>
+            <h4 className="font-medium text-sm">NLP Analysis</h4>
             <p className="text-xs text-muted-foreground">
-              Sentiment, language patterns, authenticity
+              Sentiment, grammar, coherence detection
             </p>
           </div>
           
@@ -265,9 +327,9 @@ export function ProfileInputForm({ onSubmit, onAnalyze, isLoading = false }: Pro
             <div className="p-3 rounded-full bg-green-100 dark:bg-green-900 w-fit mx-auto">
               <Camera className="h-5 w-5 text-green-600" />
             </div>
-            <h4 className="font-medium text-sm">Image Analysis</h4>
+            <h4 className="font-medium text-sm">Computer Vision</h4>
             <p className="text-xs text-muted-foreground">
-              Face detection, deepfake analysis
+              Stock photos, AI-generated face detection
             </p>
           </div>
           
@@ -277,7 +339,7 @@ export function ProfileInputForm({ onSubmit, onAnalyze, isLoading = false }: Pro
             </div>
             <h4 className="font-medium text-sm">Profile Metrics</h4>
             <p className="text-xs text-muted-foreground">
-              Account age, activity patterns
+              Follower ratio, account age, activity patterns
             </p>
           </div>
         </div>

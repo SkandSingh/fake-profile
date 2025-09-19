@@ -5,10 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { ThemeToggle } from './theme-toggle'
 import { ProfileInputForm } from './profile-input-form'
-import { TrustScore } from './trust-score'
-import { AnalysisResultCards } from './analysis-result-cards'
-import { TrustFactorsChart } from './trust-factors-chart'
+import { EnhancedResultsPage } from './enhanced-results-page'
 import { ResultExporter } from './result-exporter'
 import { 
   Search, 
@@ -39,7 +38,7 @@ export function ProfileAnalysisDashboard() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisResult[]>([])
 
-  // Mock data for demonstration
+  // Profile Purity mock data aligned with problem statement
   const mockAnalysisResult: AnalysisResult = {
     id: 'analysis-1',
     timestamp: new Date(),
@@ -88,15 +87,18 @@ export function ProfileAnalysisDashboard() {
     }
   }
 
-  const handleAnalysisSubmit = async (data: { url?: string; file?: File; analysisType: string }) => {
+  const handleAnalysisSubmit = async (data: { 
+    url?: string; 
+    file?: File; 
+    analysisType: string;
+  }) => {
     setIsAnalyzing(true)
     
     try {
-      // Prepare the API request payload
+      // Prepare the API request payload for Profile Purity Detector
       const payload: any = {
         type: data.url ? 'url' : 'file',
-        url: data.url,
-        textContent: data.url ? `Sample bio text for ${data.url}` : undefined
+        url: data.url
       }
       
       // Add file data if present
@@ -114,15 +116,8 @@ export function ProfileAnalysisDashboard() {
         }
       }
       
-      // Add mock profile data for demonstration
-      payload.profileData = {
-        username: data.url ? extractUsernameFromUrl(data.url) : 'uploaded_profile',
-        followerCount: Math.floor(Math.random() * 10000) + 100,
-        followingCount: Math.floor(Math.random() * 1000) + 50,
-        postCount: Math.floor(Math.random() * 500) + 10,
-        accountAge: Math.floor(Math.random() * 1000) + 30,
-        verified: Math.random() > 0.7
-      }
+      // Profile data will be automatically extracted from URL
+      console.log('Submitting for automatic extraction and analysis:', payload)
       
       // Call the analysis API
       const response = await fetch('/api/analyze', {
@@ -134,7 +129,8 @@ export function ProfileAnalysisDashboard() {
       })
       
       if (!response.ok) {
-        throw new Error(`Analysis failed: ${response.statusText}`)
+        const errorData = await response.json()
+        throw new Error(errorData.error || `Analysis failed: ${response.statusText}`)
       }
       
       const apiResult = await response.json()
@@ -219,31 +215,34 @@ export function ProfileAnalysisDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-6 md:py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-blue-600 rounded-lg">
-              <Shield className="h-6 w-6 text-white" />
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-600 rounded-lg">
+                <Shield className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+                  Profile Purity Detector
+                </h1>
+                <p className="text-sm md:text-base text-gray-600 dark:text-gray-300">
+                  Automatic profile extraction + AI-powered fake detection
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                Profile Trust Analyzer
-              </h1>
-              <p className="text-gray-600 dark:text-gray-300">
-                Comprehensive social media profile authenticity assessment
-              </p>
-            </div>
+            <ThemeToggle />
           </div>
           
           {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             <Card>
               <CardContent className="flex items-center gap-3 p-4">
                 <Search className="h-8 w-8 text-blue-600" />
                 <div>
                   <p className="text-2xl font-bold">{analysisHistory.length}</p>
-                  <p className="text-sm text-muted-foreground">Analyses Completed</p>
+                  <p className="text-sm text-muted-foreground">Profiles Analyzed</p>
                 </div>
               </CardContent>
             </Card>
@@ -254,7 +253,7 @@ export function ProfileAnalysisDashboard() {
                   <p className="text-2xl font-bold">
                     {analysisHistory.filter(a => a.trustScore >= 70).length}
                   </p>
-                  <p className="text-sm text-muted-foreground">Trustworthy Profiles</p>
+                  <p className="text-sm text-muted-foreground">Authentic Profiles</p>
                 </div>
               </CardContent>
             </Card>
@@ -265,7 +264,7 @@ export function ProfileAnalysisDashboard() {
                   <p className="text-2xl font-bold">
                     {analysisHistory.filter(a => a.trustScore < 70 && a.trustScore >= 40).length}
                   </p>
-                  <p className="text-sm text-muted-foreground">Moderate Risk</p>
+                  <p className="text-sm text-muted-foreground">Suspicious</p>
                 </div>
               </CardContent>
             </Card>
@@ -276,7 +275,7 @@ export function ProfileAnalysisDashboard() {
                   <p className="text-2xl font-bold">
                     {analysisHistory.filter(a => a.trustScore < 40).length}
                   </p>
-                  <p className="text-sm text-muted-foreground">High Risk</p>
+                  <p className="text-sm text-muted-foreground">Likely Fake</p>
                 </div>
               </CardContent>
             </Card>
@@ -285,13 +284,13 @@ export function ProfileAnalysisDashboard() {
 
         {/* Main Content */}
         {!currentAnalysis && !isAnalyzing ? (
-          /* Analysis Input Form */
+          /* Profile Analysis Input Form */
           <div className="max-w-4xl mx-auto">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Search className="h-5 w-5" />
-                  Start New Analysis
+                  Paste URL & Auto-Analyze
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -384,86 +383,77 @@ export function ProfileAnalysisDashboard() {
               </CardContent>
             </Card>
 
-            {/* Trust Score Section */}
-            <div className="grid gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-1">
-                <TrustScore
-                  score={currentAnalysis?.trustScore || 0}
-                  isLoading={isAnalyzing}
-                  breakdown={currentAnalysis ? {
-                    textAnalysis: currentAnalysis.textAnalysis?.authenticity || 0,
-                    imageAnalysis: currentAnalysis.imageAnalysis?.imageQuality || 0,
-                    profileMetrics: currentAnalysis.profileMetrics?.engagement.rate * 20 || 0
-                  } : undefined}
-                />
-              </div>
-              
-              <div className="lg:col-span-2">
-                <TrustFactorsChart
-                  isLoading={isAnalyzing}
-                  overallScore={currentAnalysis?.trustScore}
-                />
-              </div>
-            </div>
-
-            {/* Analysis Detail Cards */}
-            <AnalysisResultCards
-              textAnalysis={currentAnalysis?.textAnalysis}
-              imageAnalysis={currentAnalysis?.imageAnalysis}
-              profileMetrics={currentAnalysis?.profileMetrics}
-              isLoading={isAnalyzing}
-            />
-
-            {/* Additional Insights */}
+            {/* Enhanced Results Display */}
             {currentAnalysis && !isAnalyzing && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    Analysis Summary
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <h4 className="font-medium text-sm mb-2">Key Strengths</h4>
-                      <ul className="space-y-1 text-sm text-muted-foreground">
-                        <li>• {currentAnalysis.textAnalysis?.sentiment === 'positive' ? 'Positive content sentiment' : 'Neutral content tone'}</li>
-                        <li>• {currentAnalysis.imageAnalysis?.faceDetected ? 'Authentic profile image detected' : 'No suspicious image manipulation'}</li>
-                        <li>• {currentAnalysis.profileMetrics?.verification.email ? 'Email verification confirmed' : 'Consistent activity pattern'}</li>
-                      </ul>
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-sm mb-2">Areas of Concern</h4>
-                      <ul className="space-y-1 text-sm text-muted-foreground">
-                        {currentAnalysis.profileMetrics?.riskFactors.map((factor: string, index: number) => (
-                          <li key={index}>• {factor}</li>
-                        ))}
-                        {(!currentAnalysis.profileMetrics?.riskFactors || currentAnalysis.profileMetrics.riskFactors.length === 0) && (
-                          <li>• No significant concerns identified</li>
-                        )}
-                      </ul>
-                    </div>
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg">
-                    <h4 className="font-medium text-sm mb-2">Recommendation</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {currentAnalysis.trustScore >= 80 
-                        ? 'This profile shows strong indicators of authenticity and trustworthiness. The analysis suggests a low risk for fraudulent activity.'
-                        : currentAnalysis.trustScore >= 60
-                        ? 'This profile shows moderate trustworthiness with some areas requiring attention. Exercise normal caution when engaging.'
-                        : currentAnalysis.trustScore >= 40
-                        ? 'This profile raises some concerns. Additional verification recommended before trusting content or engaging in transactions.'
-                        : 'This profile shows multiple risk indicators. Exercise extreme caution and avoid sharing sensitive information.'
-                      }
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+              <EnhancedResultsPage 
+                result={{
+                  trustScore: currentAnalysis.trustScore,
+                  textScore: Math.round(
+                    (currentAnalysis.textAnalysis?.sentimentScore + 
+                     currentAnalysis.textAnalysis?.authenticity + 
+                     (100 - (currentAnalysis.textAnalysis?.toxicity || 0))) / 3
+                  ),
+                  imageScore: Math.round(
+                    (currentAnalysis.imageAnalysis?.imageQuality + 
+                     (100 - (currentAnalysis.imageAnalysis?.manipulation || 0)) + 
+                     (currentAnalysis.imageAnalysis?.confidence || 85)) / 3
+                  ),
+                  metricsScore: Math.round(
+                    Math.min(
+                      (currentAnalysis.profileMetrics?.accountAge / 365) * 20 + 
+                      Math.min((currentAnalysis.profileMetrics?.followersToFollowing || 1) * 10, 30) + 
+                      (currentAnalysis.profileMetrics?.engagement.rate || 2) * 15 + 
+                      (Object.values(currentAnalysis.profileMetrics?.verification || {}).filter(Boolean).length * 10) -
+                      (currentAnalysis.profileMetrics?.riskFactors?.length || 0) * 5,
+                      100
+                    )
+                  ),
+                  explanation: [
+                    currentAnalysis.trustScore >= 80 ? "Profile shows strong indicators of authenticity and trustworthiness." : 
+                    currentAnalysis.trustScore >= 60 ? "Profile appears moderately trustworthy with some areas requiring attention." :
+                    currentAnalysis.trustScore >= 40 ? "Profile raises several concerns that warrant careful consideration." :
+                    "Profile exhibits multiple risk factors suggesting potential fraudulent activity.",
+                    
+                    currentAnalysis.textAnalysis?.sentiment === 'positive' ? "Text content demonstrates authentic language patterns and positive sentiment." :
+                    currentAnalysis.textAnalysis?.sentiment === 'negative' ? "Text analysis reveals concerning patterns in language use or sentiment." :
+                    "Text content shows neutral sentiment with standard language patterns.",
+                    
+                    currentAnalysis.imageAnalysis?.imageQuality > 80 ? "Profile images show high quality with no signs of manipulation." :
+                    currentAnalysis.imageAnalysis?.manipulation > 50 ? "Image analysis detected potential manipulation or quality issues." :
+                    "Image analysis shows standard quality with no major concerns.",
+                    
+                    currentAnalysis.profileMetrics?.activityPattern === 'consistent' ? "Account metrics indicate natural, organic growth and engagement patterns." :
+                    currentAnalysis.profileMetrics?.activityPattern === 'suspicious' ? "Account metrics suggest potential artificial inflation or suspicious activity." :
+                    "Account metrics show normal patterns within expected ranges."
+                  ],
+                  breakdown: {
+                    textAnalysis: currentAnalysis.textAnalysis,
+                    imageAnalysis: currentAnalysis.imageAnalysis,
+                    profileMetrics: currentAnalysis.profileMetrics
+                  },
+                  processingTime: Math.floor(Math.random() * 2000) + 1000,
+                  analysisId: currentAnalysis.id
+                }}
+              />
             )}
+            
+            {/* Loading State */}
+            {isAnalyzing && (
+              <div className="space-y-6">
+                <Card>
+                  <CardContent className="flex items-center justify-center py-12">
+                    <div className="text-center space-y-4">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
+                      <div className="text-lg font-medium">Analyzing Profile...</div>
+                      <div className="text-sm text-muted-foreground">
+                        This may take a few moments while we analyze all aspects
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
           </div>
         )}
       </div>
