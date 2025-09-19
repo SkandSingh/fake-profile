@@ -1,8 +1,3 @@
-"""
-FastAPI Application for Text Analysis using DistilBERT
-Provides REST API endpoints for sentiment, grammar, and coherence analysis
-"""
-
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, validator
@@ -12,39 +7,33 @@ import asyncio
 from datetime import datetime
 import uuid
 
-# Import our text analysis service
 try:
     from ml.text_analysis import text_analysis_service, analyze_text
 except ImportError:
-    # Fallback import
     import sys
     import os
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from ml.text_analysis import text_analysis_service, analyze_text
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize FastAPI app
 app = FastAPI(
     title="Text Analysis API",
-    description="AI-powered text analysis using DistilBERT for sentiment, grammar, and coherence analysis",
+    description="AI-powered text analysis using DistilBERT",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
 )
 
-# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Pydantic models for request/response validation
 class TextAnalysisRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=10000, description="Text to analyze")
     include_details: bool = Field(default=True, description="Include detailed analysis breakdown")
