@@ -2,8 +2,9 @@
 
 A production-ready full-stack machine learning application featuring:
 - **Backend**: Python 3.11 with FastAPI, PyTorch, HuggingFace Transformers
-- **Frontend**: Next.js 14 with Tailwind CSS and shadcn/ui components
+- **Frontend**: Next.js 14 with Tailwind CSS and shadcn/ui components  
 - **ML Pipeline**: Image classification with hyperparameter optimization using Optuna
+- **Text Analysis**: DistilBERT-powered sentiment, grammar, and coherence analysis
 
 ## 🚀 Features
 
@@ -12,6 +13,8 @@ A production-ready full-stack machine learning application featuring:
 - **Production API**: FastAPI with proper error handling, validation, and monitoring
 - **Modern Frontend**: Responsive UI with drag-and-drop image uploads
 - **Real-time Inference**: Fast image classification with confidence scores
+- **Text Analysis API**: AI-powered text analysis using DistilBERT for sentiment, grammar, and coherence
+- **Profile Analysis**: Complete social media profile trust scoring system
 - **Model Management**: Easy model loading and switching
 - **Health Monitoring**: System status and resource monitoring
 
@@ -22,9 +25,11 @@ A production-ready full-stack machine learning application featuring:
 │   ├── requirements.txt       # Python dependencies
 │   ├── ml/
 │   │   ├── train.py          # ML training script
-│   │   └── optimize.py       # Hyperparameter optimization
+│   │   ├── optimize.py       # Hyperparameter optimization
+│   │   └── text_analysis.py  # DistilBERT text analysis service
 │   ├── api/
-│   │   └── main.py           # FastAPI server
+│   │   ├── main.py           # FastAPI server (original)
+│   │   └── text_analysis_api.py # Text Analysis API server
 │   └── models/               # Trained model storage
 ├── frontend/
 │   ├── package.json          # Node.js dependencies
@@ -84,6 +89,42 @@ npm run dev
 ```
 
 The frontend will be available at `http://localhost:3000`
+
+### Text Analysis API Setup
+
+Our application includes a dedicated Text Analysis API powered by DistilBERT for advanced text analysis.
+
+1. **Start the Text Analysis API**:
+```bash
+cd backend
+./start_text_api.sh
+```
+
+Or manually:
+```bash
+cd backend/api
+python -m uvicorn text_analysis_api:app --host 0.0.0.0 --port 8000 --reload
+```
+
+2. **Test the API**:
+```bash
+cd backend
+python test_simple.py
+```
+
+The Text Analysis API will be available at:
+- **API Server**: `http://localhost:8000`
+- **Interactive Docs**: `http://localhost:8000/docs`
+- **Health Check**: `http://localhost:8000/health`
+
+**Key Features:**
+- **Sentiment Analysis**: 0-1 normalized sentiment scores using DistilBERT
+- **Grammar Analysis**: Rule-based + ML grammar quality assessment  
+- **Coherence Analysis**: Text structure and semantic coherence evaluation
+- **Batch Processing**: Analyze multiple texts efficiently
+- **Comprehensive API**: Full REST API with validation and error handling
+
+See `backend/TEXT_ANALYSIS_README.md` for detailed documentation.
 
 ## 🧪 Test Commands
 
