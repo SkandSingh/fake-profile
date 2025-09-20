@@ -5,8 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { ThemeToggle } from './theme-toggle'
-import { ProfileInputForm } from './profile-input-form'
+import ProfileInputForm from './profile-input-form'
 import { EnhancedResultsPage } from './enhanced-results-page'
 import { ResultExporter } from './result-exporter'
 import { 
@@ -87,88 +86,23 @@ export function ProfileAnalysisDashboard() {
     }
   }
 
-  const handleAnalysisSubmit = async (data: { 
-    url?: string; 
-    file?: File; 
-    analysisType: string;
-  }) => {
-    setIsAnalyzing(true)
-    
-    try {
-      // Prepare the API request payload for Profile Purity Detector
-      const payload: any = {
-        type: data.url ? 'url' : 'file',
-        url: data.url
-      }
-      
-      // Add file data if present
-      if (data.file) {
-        payload.fileData = {
-          name: data.file.name,
-          type: data.file.type,
-          size: data.file.size
-        }
-        
-        // Convert file to base64 if it's an image
-        if (data.file.type.startsWith('image/')) {
-          const base64 = await fileToBase64(data.file)
-          payload.fileData.content = base64
-        }
-      }
-      
-      // Profile data will be automatically extracted from URL
-      console.log('Submitting for automatic extraction and analysis:', payload)
-      
-      // Call the analysis API
-      const response = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      })
-      
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || `Analysis failed: ${response.statusText}`)
-      }
-      
-      const apiResult = await response.json()
-      
-      // Transform API result to match our component interface
-      const result: AnalysisResult = {
-        id: apiResult.analysisId,
-        timestamp: new Date(),
-        inputType: data.url ? 'url' : 'file',
-        inputValue: data.url || data.file?.name || 'Unknown',
-        trustScore: apiResult.trustScore,
-        status: 'completed',
-        textAnalysis: apiResult.breakdown.textAnalysis,
-        imageAnalysis: apiResult.breakdown.imageAnalysis,
-        profileMetrics: apiResult.breakdown.profileMetrics
-      }
-      
-      setCurrentAnalysis(result)
-      setAnalysisHistory(prev => [result, ...prev.slice(0, 4)]) // Keep last 5 analyses
-      
-    } catch (error) {
-      console.error('Analysis failed:', error)
-      alert(`Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      
-      // Fallback to mock data if API fails
-      const result: AnalysisResult = {
-        ...mockAnalysisResult,
-        id: `analysis-${Date.now()}`,
-        timestamp: new Date(),
-        inputType: data.url ? 'url' : 'file',
-        inputValue: data.url || data.file?.name || 'Unknown'
-      }
-      
-      setCurrentAnalysis(result)
-      setAnalysisHistory(prev => [result, ...prev.slice(0, 4)])
-    } finally {
-      setIsAnalyzing(false)
+  const handleAnalysisComplete = (apiResult: any) => {
+    // Transform API result to match our component interface  
+    const result: AnalysisResult = {
+      id: `analysis-${Date.now()}`,
+      timestamp: new Date(),
+      inputType: 'url', // Using 'url' as fallback for manual type
+      inputValue: 'Manual Input',
+      trustScore: apiResult.trustScore,
+      status: 'completed',
+      textAnalysis: apiResult.breakdown?.textAnalysis || {},
+      imageAnalysis: apiResult.breakdown?.imageAnalysis || {},
+      profileMetrics: apiResult.breakdown?.profileMetrics || {}
     }
+    
+    setCurrentAnalysis(result)
+    setAnalysisHistory(prev => [result, ...prev.slice(0, 4)]) // Keep last 5 analyses
+    setIsAnalyzing(false)
   }
   
   // Helper function to convert file to base64
@@ -214,7 +148,7 @@ export function ProfileAnalysisDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="container mx-auto px-4 py-6 md:py-8">
         {/* Header */}
         <div className="mb-8">
@@ -224,15 +158,14 @@ export function ProfileAnalysisDashboard() {
                 <Shield className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
                   Profile Purity Detector
                 </h1>
-                <p className="text-sm md:text-base text-gray-600 dark:text-gray-300">
+                <p className="text-sm md:text-base text-gray-600">
                   Automatic profile extraction + AI-powered fake detection
                 </p>
               </div>
             </div>
-            <ThemeToggle />
           </div>
           
           {/* Quick Stats */}
@@ -294,7 +227,7 @@ export function ProfileAnalysisDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ProfileInputForm onSubmit={handleAnalysisSubmit} />
+                <ProfileInputForm onAnalysisComplete={handleAnalysisComplete} />
               </CardContent>
             </Card>
 

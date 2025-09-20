@@ -1,45 +1,129 @@
-# ML Full-Stack Application
+# Profile Purity Detector
 
-A production-ready full-stack machine learning application featuring:
-- **Backend**: Python 3.11 with FastAPI, PyTorch, HuggingFace Transformers
-- **Frontend**: Next.js 14 with Tailwind CSS and shadcn/ui components  
-- **ML Pipeline**: Image classification with hyperparameter optimization using Optuna
-- **Text Analysis**: DistilBERT-powered sentiment, grammar, and coherence analysis
+🎯 **Hackathon-ready** AI-powered```
+Profile Purity Detector/
+├── 🚀 start-all.sh              # One-command startup script
+├── 📄 README.md                 # This file
+├── backend/
+│   ├── requirements.txt         # Python dependencies  
+│   └── api/
+│       ├── text_analysis_simple.py        # Text Analysis API
+│       ├── vision_detection_simple.py     # Vision Detection API  
+│       ├── tabular_analysis_simple.py     # Tabular Analysis API
+│       ├── ensemble_simple.py             # Ensemble Learning API
+│       └── profile_extraction_simple.py   # Profile Extraction API
+└── frontend/
+    ├── app/                     # Next.js application
+    ├── components/              # UI components
+    └── [other frontend files]
+```ion system with **automatic profile extraction** from social media URLs.
 
-## 🚀 Features
+## ✨ Features
 
-- **Modular ML Training**: Reproducible training with PyTorch and HuggingFace models
-- **Hyperparameter Optimization**: Automated tuning with Optuna
-- **Production API**: FastAPI with proper error handling, validation, and monitoring
-- **Modern Frontend**: Responsive UI with drag-and-drop image uploads
-- **Real-time Inference**: Fast image classification with confidence scores
-- **Text Analysis API**: AI-powered text analysis using DistilBERT for sentiment, grammar, and coherence
-- **Profile Analysis**: Complete social media profile trust scoring system
-- **Model Management**: Easy model loading and switching
-- **Health Monitoring**: System status and resource monitoring
+- 🔄 **Automatic Profile Extraction**: Just paste Instagram/Twitter URLs - all data extracted automatically
+- 🤖 **Multi-faceted AI Analysis**: NLP (30%) + Computer Vision (35%) + Profile Metrics (35%)
+- ⚡ **Real-time Processing**: Instant analysis with professional UI
+- 🌐 **Multi-platform Support**: Instagram, Twitter/X, Facebook
+- 💼 **Production Ready**: Robust error handling and graceful fallbacks
+
+## 🚀 One-Command Startup
+
+### Prerequisites
+- Python 3.8+ 
+- Node.js 16+
+- Git
+
+### Quick Start
+```bash
+git clone <repository-url>
+cd "Hackathon 101"
+./start-all.sh
+```
+
+That's it! The script will:
+- ✅ Set up Python virtual environment
+- ✅ Install all dependencies  
+- ✅ Start all 5 backend APIs
+- ✅ Launch the frontend
+- ✅ Verify all services are running
+
+### Access the Application
+- **Demo**: http://localhost:3000
+- **API Documentation**: http://localhost:8000/docs (and ports 8002-8005)
+
+## 📱 How to Use
+
+1. **Open**: http://localhost:3000
+2. **Paste**: Any Instagram or Twitter profile URL
+3. **Click**: "Auto-Extract & Analyze Profile"  
+4. **Get**: Instant trust score with detailed breakdown
+
+## 🏗️ Architecture
+### Backend Services
+- **Text Analysis API** (Port 8000): NLP sentiment and authenticity analysis
+- **Vision Detection API** (Port 8002): AI image manipulation detection  
+- **Tabular Analysis API** (Port 8003): Profile metrics classification
+- **Ensemble API** (Port 8004): Weighted scoring algorithm
+- **Profile Extraction API** (Port 8005): Automatic data extraction from URLs
+
+### Frontend
+- **Next.js 14**: Modern React framework with TypeScript
+- **Tailwind CSS**: Responsive design with dark/light mode
+- **shadcn/ui**: Professional UI components
+- **Real-time Analysis**: Live progress indicators and results
 
 ## 📁 Project Structure
 
 ```
+Profile Purity Detector/
+├── 🚀 start-project.sh          # One-command startup script
+├── � README.md                 # This file
 ├── backend/
-│   ├── requirements.txt       # Python dependencies
+│   ├── requirements.txt         # Python dependencies  
 │   ├── ml/
-│   │   ├── train.py          # ML training script
-│   │   ├── optimize.py       # Hyperparameter optimization
-│   │   └── text_analysis.py  # DistilBERT text analysis service
-│   ├── api/
-│   │   ├── main.py           # FastAPI server (original)
-│   │   └── text_analysis_api.py # Text Analysis API server
-│   └── models/               # Trained model storage
-├── frontend/
-│   ├── package.json          # Node.js dependencies
-│   ├── app/                  # Next.js app directory
-│   ├── components/           # UI components
-│   └── lib/                  # Utilities
-└── README.md
+│   │   ├── auto_profile_extractor.py  # Automatic profile extraction
+│   │   └── [analysis modules]   # NLP, Computer Vision, etc.
+│   └── api/
+│       ├── text_api.py          # Text Analysis API
+│       ├── vision_api.py        # Vision Detection API  
+│       ├── production_tabular_api.py # Tabular Analysis API
+│       ├── ensemble_api.py      # Ensemble Learning API
+│       └── profile_extraction_api.py # Profile Extraction API
+└── frontend/
+    ├── app/                     # Next.js application
+    ├── components/              # UI components
+    └── [other frontend files]
 ```
 
-## 🛠️ Setup Instructions
+## 🎯 Demo Workflow
+
+1. **Start Project**: `./start-all.sh`
+2. **Open Browser**: Navigate to http://localhost:3000
+3. **Paste URL**: Enter any Instagram or Twitter profile URL
+4. **Auto-Analysis**: System automatically:
+   - Extracts follower count, following count, post count
+   - Downloads and analyzes profile image
+   - Processes bio text for sentiment/authenticity
+   - Calculates weighted trust score
+5. **View Results**: Get detailed breakdown with risk factors
+
+## 🔧 Troubleshooting
+
+### Services Not Starting
+```bash
+# Check if ports are in use
+lsof -i :3000,:8000,:8002,:8003,:8004,:8005
+
+# Kill existing processes
+./start-project.sh  # Script automatically handles cleanup
+```
+
+### Profile Extraction Issues
+- Ensure stable internet connection
+- Check if social media URLs are public profiles
+- Private profiles will fall back to manual input
+
+## 🏆 Key Features for Hackathon
 
 ### Backend Setup
 

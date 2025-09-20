@@ -1,7 +1,8 @@
 """
-Vision Model Service for Fake Profile Picture Detection
-Uses pretrained ResNet50/EfficientNet for binary classification: real vs AI/stock
-Returns probability scores (0-1) where 1 = likely fake/AI-generated
+Profile Purity Detector - Computer Vision Module
+Detects stock photos and AI-generated faces in profile pictures as per problem statement
+Uses pretrained models for binary classification: authentic vs stock/AI-generated
+Returns probability scores (0-1) where 1 = likely stock photo or AI-generated face
 """
 
 import torch
@@ -21,9 +22,10 @@ import time
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class FakeProfileDetector:
+class ProfilePurityVisionDetector:
     """
-    Vision model for detecting fake/AI-generated profile pictures
+    Computer vision model for Profile Purity Detector
+    Specifically detects stock photos and AI-generated faces as per problem statement
     """
     
     def __init__(self, model_type: str = "resnet50", device: Optional[str] = None):
@@ -275,11 +277,11 @@ class FakeProfileDetector:
 # Global detector instance
 fake_profile_detector = None
 
-def get_detector(model_type: str = "resnet50") -> FakeProfileDetector:
+def get_detector(model_type: str = "resnet50") -> ProfilePurityVisionDetector:
     """Get or create the global detector instance"""
     global fake_profile_detector
     if fake_profile_detector is None or fake_profile_detector.model_type != model_type:
-        fake_profile_detector = FakeProfileDetector(model_type=model_type)
+        fake_profile_detector = ProfilePurityVisionDetector(model_type=model_type)
     return fake_profile_detector
 
 def detect_fake_profile(image: Union[Image.Image, np.ndarray, bytes], 
@@ -300,7 +302,7 @@ def detect_fake_profile(image: Union[Image.Image, np.ndarray, bytes],
 # Example usage and testing
 if __name__ == "__main__":
     # Test the detector
-    detector = FakeProfileDetector(model_type="resnet50")
+    detector = ProfilePurityVisionDetector(model_type="resnet50")
     
     # Create a test image
     test_image = Image.new('RGB', (224, 224), color='red')

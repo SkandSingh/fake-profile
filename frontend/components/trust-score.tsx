@@ -103,7 +103,7 @@ export function TrustScore({ score, isLoading = false, breakdown }: TrustScorePr
               fill="none"
               stroke="currentColor"
               strokeWidth="8"
-              className="text-gray-200 dark:text-gray-700"
+              className="text-gray-200"
             />
             
             {/* Progress circle */}

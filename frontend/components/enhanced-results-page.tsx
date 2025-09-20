@@ -309,7 +309,6 @@ function CircularTrustMeter({ score }: { score: number }) {
               fill="none"
               stroke="rgb(229 231 235)"
               strokeWidth="12"
-              className="dark:stroke-gray-700"
             />
             
             {/* Progress circle */}

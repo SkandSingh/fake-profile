@@ -101,7 +101,7 @@ export function TrustFactorsChart({
     if (active && payload && payload.length) {
       const data = payload[0].payload
       return (
-        <div className="bg-white dark:bg-gray-800 border rounded-lg shadow-lg p-3">
+        <div className="bg-white border rounded-lg shadow-lg p-3">
           <p className="font-medium">{label}</p>
           <div className="space-y-1 text-sm">
             <p className="text-blue-600">
@@ -137,7 +137,7 @@ export function TrustFactorsChart({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="h-64 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+            <div className="h-64 bg-gray-100 rounded animate-pulse" />
             <div className="grid grid-cols-2 gap-4">
               {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="space-y-2">
@@ -229,7 +229,7 @@ export function TrustFactorsChart({
         </div>
 
         {/* Calculation Summary */}
-        <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg border">
+        <div className="bg-blue-50 p-4 rounded-lg border">
           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             Score Calculation

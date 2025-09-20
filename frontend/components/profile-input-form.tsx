@@ -1,348 +1,521 @@
 'use client'
 
-import { useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
-import { Upload, Link, FileText, Camera, User, Zap, CheckCircle } from 'lucide-react'
-import { useDropzone } from 'react-dropzone'
+import React, { useState, useEffect } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { User, BarChart3, Upload, Camera, X } from 'lucide-react'
 
-interface ProfileInputFormProps {
-  onSubmit?: (data: { 
-    url?: string; 
-    file?: File; 
-    analysisType: string;
-  }) => Promise<void>
-  onAnalyze?: (data: {
-    profileUrl?: string
-    files: File[]
-    analysisType: 'url' | 'upload'
-  }) => void
-  isLoading?: boolean
+interface ProfileData {
+  username: string
+  displayName: string
+  platform: string
+  bio: string
+  profileText: string
+  followerCount: number
+  followingCount: number
+  postCount: number
+  accountAge?: number
+  verified: boolean
+  profilePicture?: File
 }
 
-export function ProfileInputForm({ onSubmit, onAnalyze, isLoading = false }: ProfileInputFormProps) {
-  const [profileUrl, setProfileUrl] = useState('')
-  const [analysisType, setAnalysisType] = useState<'url' | 'upload'>('url')
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+interface AnalysisResult {
+  trustScore: number
+  nlpScore: number
+  visionScore: number
+  profileScore: number
+  ensemble: {
+    trust_score: number
+    risk_level: string
+    confidence: number
+  }
+  summary: string
+  details: {
+    nlp?: any
+    vision?: any
+    profile?: any
+    tabular?: any
+  }
+}
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop: (acceptedFiles: File[]) => {
-      setSelectedFiles(acceptedFiles)
-      setAnalysisType('upload')
-    },
-    accept: {
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'],
-      'text/*': ['.txt', '.json', '.csv'],
-      'application/json': ['.json']
-    },
-    multiple: true,
-    maxFiles: 10
+interface ProfileInputFormProps {
+  onAnalysisComplete: (result: AnalysisResult) => void
+}
+
+export default function ProfileInputForm({ onAnalysisComplete }: ProfileInputFormProps) {
+  const [formData, setFormData] = useState<ProfileData>({
+    username: '',
+    displayName: '',
+    platform: 'instagram',
+    bio: '',
+    profileText: '',
+    followerCount: 0,
+    followingCount: 0,
+    postCount: 0,
+    accountAge: undefined,
+    verified: false
   })
 
-  const handleSubmit = async () => {
-    if (analysisType === 'url' && !profileUrl.trim()) {
-      alert('Please enter a profile URL')
-      return
-    }
-    
-    if (analysisType === 'upload' && selectedFiles.length === 0) {
-      alert('Please select files to analyze')
-      return
-    }
+  const [errors, setErrors] = useState<Partial<Record<keyof ProfileData, string>>>({})
+  const [isLoading, setIsLoading] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
-    if (onSubmit) {
-      // New dashboard callback - now fully automated
-      await onSubmit({
-        url: analysisType === 'url' ? profileUrl : undefined,
-        file: analysisType === 'upload' ? selectedFiles[0] : undefined,
-        analysisType
-      })
-    } else if (onAnalyze) {
-      // Legacy callback
-      onAnalyze({
-        profileUrl: analysisType === 'url' ? profileUrl : undefined,
-        files: analysisType === 'upload' ? selectedFiles : [],
-        analysisType
-      })
+  // Utility function to convert file to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          // Remove the data:image/jpeg;base64, prefix
+          const base64 = reader.result.split(',')[1]
+          resolve(base64)
+        } else {
+          reject(new Error('Failed to read file'))
+        }
+      }
+      reader.onerror = reject
+    })
+  }
+
+  // Cleanup preview URL when component unmounts
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+      }
+    }
+  }, [previewUrl])
+
+  const updateField = (field: keyof ProfileData, value: string | number | boolean | undefined | File) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }))
     }
   }
 
-  const clearFiles = () => {
-    setSelectedFiles([])
-    if (analysisType === 'upload') {
-      setAnalysisType('url')
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setErrors(prev => ({ ...prev, profilePicture: 'Please select an image file' }))
+        return
+      }
+      
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        setErrors(prev => ({ ...prev, profilePicture: 'File size must be less than 10MB' }))
+        return
+      }
+      
+      updateField('profilePicture', file)
+      
+      // Create preview URL
+      const url = URL.createObjectURL(file)
+      setPreviewUrl(url)
+      
+      // Clear any existing errors
+      setErrors(prev => ({ ...prev, profilePicture: undefined }))
+    }
+  }
+
+  const removeProfilePicture = () => {
+    updateField('profilePicture', undefined)
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl)
+      setPreviewUrl(null)
+    }
+    // Reset file input
+    const fileInput = document.getElementById('profilePicture') as HTMLInputElement
+    if (fileInput) {
+      fileInput.value = ''
+    }
+  }
+
+  const validateForm = (): boolean => {
+    const newErrors: Partial<Record<keyof ProfileData, string>> = {}
+
+    if (!formData.username.trim()) {
+      newErrors.username = 'Username is required'
+    }
+
+    if (!formData.displayName.trim()) {
+      newErrors.displayName = 'Display name is required'
+    }
+
+    if (!formData.platform) {
+      newErrors.platform = 'Platform is required'
+    }
+
+    if (!formData.bio.trim()) {
+      newErrors.bio = 'Bio is required'
+    }
+
+    if (!formData.profileText.trim()) {
+      newErrors.profileText = 'Profile text content is required'
+    }
+
+    if (formData.followerCount < 0) {
+      newErrors.followerCount = 'Follower count cannot be negative'
+    }
+
+    if (formData.followingCount < 0) {
+      newErrors.followingCount = 'Following count cannot be negative'
+    }
+
+    if (formData.postCount < 0) {
+      newErrors.postCount = 'Post count cannot be negative'
+    }
+
+    if (formData.accountAge !== undefined && formData.accountAge < 0) {
+      newErrors.accountAge = 'Account age cannot be negative'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!validateForm()) {
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      // Prepare the request payload
+      const payload: any = {
+        type: 'manual',
+        profileData: {
+          profileUrl: `${formData.platform}.com/${formData.username}`, // Synthetic URL for API compatibility
+          platform: formData.platform,
+          username: formData.username,
+          displayName: formData.displayName,
+          bio: formData.bio,
+          followerCount: formData.followerCount,
+          followingCount: formData.followingCount,
+          postCount: formData.postCount,
+          accountAge: formData.accountAge,
+          verified: formData.verified,
+          posts: [], // No post analysis for manual input
+          profileText: formData.profileText
+        }
+      }
+
+      // Add profile picture if provided
+      if (formData.profilePicture) {
+        // Convert file to base64 for API
+        const base64 = await fileToBase64(formData.profilePicture)
+        payload.fileData = {
+          name: formData.profilePicture.name,
+          type: formData.profilePicture.type,
+          size: formData.profilePicture.size,
+          content: base64
+        }
+      }
+
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      })
+
+      if (!response.ok) {
+        throw new Error(`Analysis failed: ${response.status} ${response.statusText}`)
+      }
+
+      const result: AnalysisResult = await response.json()
+      onAnalysisComplete(result)
+
+    } catch (error) {
+      console.error('Analysis error:', error)
+      // You might want to show an error message to the user here
+      alert(`Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsLoading(false)
     }
   }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
+    <Card className="w-full max-w-4xl mx-auto">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <User className="h-6 w-6 text-blue-600" />
-          Profile Purity Analysis
+          Manual Profile Analysis
         </CardTitle>
         <CardDescription>
-          Analyze social media profiles using multi-faceted AI detection (NLP, Computer Vision, Profile Metrics)
+          Enter profile information manually for AI-powered fake profile detection analysis
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Analysis Type Selector */}
-        <div className="flex gap-4">
-          <Button
-            type="button"
-            variant={analysisType === 'url' ? 'default' : 'outline'}
-            onClick={() => setAnalysisType('url')}
-            className="flex-1"
-            disabled={isLoading}
-          >
-            <Link className="h-4 w-4 mr-2" />
-            Profile URL
-          </Button>
-          <Button
-            type="button"
-            variant={analysisType === 'upload' ? 'default' : 'outline'}
-            onClick={() => setAnalysisType('upload')}
-            className="flex-1"
-            disabled={isLoading}
-          >
-            <Upload className="h-4 w-4 mr-2" />
-            Upload Files
-          </Button>
-        </div>
-
-        {/* Automatic Extraction Features */}
-        <Card className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Zap className="h-5 w-5 text-green-600" />
-              Automatic Profile Extraction
-            </CardTitle>
-            <CardDescription>
-              Simply provide a profile URL - all metrics will be extracted automatically!
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <span className="text-sm">Follower & following counts</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <span className="text-sm">Post counts & engagement</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <span className="text-sm">Profile bio & description</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <span className="text-sm">Account age & verification</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* URL Input Form */}
-        {analysisType === 'url' && (
-          <form onSubmit={handleSubmit} className="space-y-4">
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Profile Information */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="profileUrl">Social Media Profile URL</Label>
+              <Label htmlFor="username">Username *</Label>
               <Input
-                id="profileUrl"
-                type="url"
-                placeholder="https://twitter.com/username or https://instagram.com/username"
-                value={profileUrl}
-                onChange={(e) => setProfileUrl(e.target.value)}
+                id="username"
+                placeholder="e.g., john_doe, @username"
+                value={formData.username}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField('username', e.target.value)}
                 disabled={isLoading}
-                className="w-full"
+                className={errors.username ? 'border-red-500' : ''}
               />
+              {errors.username && <p className="text-sm text-red-500">{errors.username}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="displayName">Display Name *</Label>
+              <Input
+                id="displayName"
+                placeholder="e.g., John Doe"
+                value={formData.displayName}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField('displayName', e.target.value)}
+                disabled={isLoading}
+                className={errors.displayName ? 'border-red-500' : ''}
+              />
+              {errors.displayName && <p className="text-sm text-red-500">{errors.displayName}</p>}
+            </div>
+          </div>
+
+          {/* Platform Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="platform">Platform *</Label>
+            <select 
+              value={formData.platform} 
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateField('platform', e.target.value)}
+              className={`w-full px-3 py-2 border rounded-md ${errors.platform ? 'border-red-500' : 'border-gray-300'}`}
+              disabled={isLoading}
+            >
+              <option value="">Select social media platform</option>
+              <option value="instagram">Instagram</option>
+              <option value="twitter">Twitter/X</option>
+              <option value="facebook">Facebook</option>
+              <option value="linkedin">LinkedIn</option>
+              <option value="tiktok">TikTok</option>
+              <option value="other">Other</option>
+            </select>
+            {errors.platform && <p className="text-sm text-red-500">{errors.platform}</p>}
+          </div>
+
+          {/* Profile Picture Upload */}
+          <div className="space-y-2">
+            <Label htmlFor="profilePicture">Profile Picture (Optional)</Label>
+            <div className="space-y-3">
+              {!formData.profilePicture ? (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                  <input
+                    id="profilePicture"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    disabled={isLoading}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="profilePicture"
+                    className="cursor-pointer flex flex-col items-center gap-2"
+                  >
+                    <Camera className="h-8 w-8 text-gray-400" />
+                    <div className="text-sm text-gray-600">
+                      <span className="font-medium text-blue-600 hover:text-blue-500">
+                        Click to upload profile picture
+                      </span>
+                      <p className="text-gray-500 mt-1">PNG, JPG, GIF up to 10MB</p>
+                    </div>
+                  </label>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-4 p-4 border rounded-lg bg-gray-50">
+                    {previewUrl && (
+                      <img
+                        src={previewUrl}
+                        alt="Profile preview"
+                        className="w-16 h-16 rounded-full object-cover border-2 border-gray-300"
+                      />
+                    )}
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{formData.profilePicture.name}</p>
+                      <p className="text-xs text-gray-500">
+                        {(formData.profilePicture.size / 1024).toFixed(1)} KB
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={removeProfilePicture}
+                      disabled={isLoading}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Profile picture will be analyzed for authenticity and manipulation detection
+                  </p>
+                </div>
+              )}
+            </div>
+            {errors.profilePicture && <p className="text-sm text-red-500">{errors.profilePicture}</p>}
+          </div>
+
+          {/* Bio and Profile Text */}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="bio">Bio/Description *</Label>
+              <textarea
+                id="bio"
+                placeholder="Enter the profile bio or description..."
+                value={formData.bio}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => updateField('bio', e.target.value)}
+                disabled={isLoading}
+                rows={3}
+                className={`w-full px-3 py-2 border rounded-md ${errors.bio ? 'border-red-500' : 'border-gray-300'}`}
+              />
+              {errors.bio && <p className="text-sm text-red-500">{errors.bio}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="profileText">Profile Text Content *</Label>
+              <textarea
+                id="profileText"
+                placeholder="Enter any text content from posts, captions, or other profile text..."
+                value={formData.profileText}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => updateField('profileText', e.target.value)}
+                disabled={isLoading}
+                rows={4}
+                className={`w-full px-3 py-2 border rounded-md ${errors.profileText ? 'border-red-500' : 'border-gray-300'}`}
+              />
+              {errors.profileText && <p className="text-sm text-red-500">{errors.profileText}</p>}
               <p className="text-sm text-muted-foreground">
-                Supported platforms: Instagram, Twitter/X, Facebook - All data extracted automatically!
+                This text will be analyzed for sentiment, authenticity, and other linguistic patterns
               </p>
             </div>
+          </div>
+
+          {/* Profile Metrics */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <BarChart3 className="h-5 w-5 text-blue-600" />
+              <h3 className="text-lg font-semibold">Profile Metrics</h3>
+            </div>
             
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="followerCount">Followers *</Label>
+                <Input
+                  id="followerCount"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={formData.followerCount || ''}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField('followerCount', parseInt(e.target.value) || 0)}
+                  disabled={isLoading}
+                  className={errors.followerCount ? 'border-red-500' : ''}
+                />
+                {errors.followerCount && <p className="text-sm text-red-500">{errors.followerCount}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="followingCount">Following *</Label>
+                <Input
+                  id="followingCount"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={formData.followingCount || ''}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField('followingCount', parseInt(e.target.value) || 0)}
+                  disabled={isLoading}
+                  className={errors.followingCount ? 'border-red-500' : ''}
+                />
+                {errors.followingCount && <p className="text-sm text-red-500">{errors.followingCount}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="postCount">Posts *</Label>
+                <Input
+                  id="postCount"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={formData.postCount || ''}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField('postCount', parseInt(e.target.value) || 0)}
+                  disabled={isLoading}
+                  className={errors.postCount ? 'border-red-500' : ''}
+                />
+                {errors.postCount && <p className="text-sm text-red-500">{errors.postCount}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="accountAge">Account Age (days)</Label>
+                <Input
+                  id="accountAge"
+                  type="number"
+                  min="0"
+                  placeholder="Optional - leave blank if unknown"
+                  value={formData.accountAge || ''}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField('accountAge', e.target.value ? parseInt(e.target.value) : undefined)}
+                  disabled={isLoading}
+                  className={errors.accountAge ? 'border-red-500' : ''}
+                />
+                {errors.accountAge && <p className="text-sm text-red-500">{errors.accountAge}</p>}
+                <p className="text-sm text-muted-foreground">Optional: How many days old is this account?</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="verified">Verification Status</Label>
+                <select 
+                  value={formData.verified ? 'true' : 'false'} 
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateField('verified', e.target.value === 'true')}
+                  className="w-full px-3 py-2 border rounded-md border-gray-300"
+                  disabled={isLoading}
+                >
+                  <option value="false">Not Verified</option>
+                  <option value="true">Verified Account</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          <div className="pt-4">
             <Button 
               type="submit" 
               className="w-full" 
-              disabled={isLoading || !profileUrl.trim()}
+              disabled={isLoading}
               size="lg"
             >
               {isLoading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  Step 1: Extracting Profile Data...
+                  Analyzing Profile...
                 </>
               ) : (
                 <>
-                  <Zap className="h-4 w-4 mr-2" />
-                  Auto-Extract & Analyze Profile
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Analyze Profile
                 </>
               )}
             </Button>
-            
-            {isLoading && (
-              <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
-                <CardContent className="pt-6">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
-                      <span className="text-sm">Extracting profile data from URL...</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-muted-foreground">
-                      <div className="h-4 w-4 rounded-full border-2 border-gray-300" />
-                      <span className="text-sm">Running NLP analysis...</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-muted-foreground">
-                      <div className="h-4 w-4 rounded-full border-2 border-gray-300" />
-                      <span className="text-sm">Processing computer vision...</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-muted-foreground">
-                      <div className="h-4 w-4 rounded-full border-2 border-gray-300" />
-                      <span className="text-sm">Calculating trust score...</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </form>
-        )}
+          </div>
 
-        {/* File Upload Form */}
-        {analysisType === 'upload' && (
-          <div className="space-y-4">
-            <div
-              {...getRootProps()}
-              className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-                isDragActive
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
-                  : 'border-gray-300 hover:border-gray-400 dark:border-gray-600'
-              }`}
-            >
-              <input {...getInputProps()} />
-              <div className="flex flex-col items-center gap-4">
-                <div className="flex gap-4">
-                  <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900">
-                    <FileText className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <div className="p-3 rounded-full bg-green-100 dark:bg-green-900">
-                    <Camera className="h-6 w-6 text-green-600" />
-                  </div>
-                </div>
-                
-                {isDragActive ? (
-                  <p className="text-blue-600 font-medium">Drop the files here...</p>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="text-gray-600 dark:text-gray-300">
-                      Drag & drop profile data here, or click to select
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Support: Images (JPG, PNG), Text files, JSON data
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Selected Files Display */}
-            {selectedFiles.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium text-gray-900 dark:text-gray-100">
-                    Selected Files ({selectedFiles.length})
-                  </h4>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={clearFiles}
-                    disabled={isLoading}
-                  >
-                    Clear All
-                  </Button>
-                </div>
-                
-                <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto">
-                  {selectedFiles.map((file, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-3 p-3 border rounded-lg bg-gray-50 dark:bg-gray-800"
-                    >
-                      <div className="p-2 rounded bg-white dark:bg-gray-700">
-                        {file.type.startsWith('image/') ? (
-                          <Camera className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <FileText className="h-4 w-4 text-blue-600" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{file.name}</p>
-                        <p className="text-xs text-gray-500">
-                          {(file.size / 1024).toFixed(1)} KB
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                
-                <Button
-                  onClick={handleSubmit}
-                  className="w-full"
-                  disabled={isLoading}
-                  size="lg"
-                >
-                  {isLoading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                      Analyzing Files...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Analyze {selectedFiles.length} File{selectedFiles.length !== 1 ? 's' : ''}
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Analysis Features Info */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
-          <div className="text-center space-y-2">
-            <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900 w-fit mx-auto">
-              <FileText className="h-5 w-5 text-blue-600" />
-            </div>
-            <h4 className="font-medium text-sm">NLP Analysis</h4>
-            <p className="text-xs text-muted-foreground">
-              Sentiment, grammar, coherence detection
-            </p>
-          </div>
-          
-          <div className="text-center space-y-2">
-            <div className="p-3 rounded-full bg-green-100 dark:bg-green-900 w-fit mx-auto">
-              <Camera className="h-5 w-5 text-green-600" />
-            </div>
-            <h4 className="font-medium text-sm">Computer Vision</h4>
-            <p className="text-xs text-muted-foreground">
-              Stock photos, AI-generated face detection
-            </p>
-          </div>
-          
-          <div className="text-center space-y-2">
-            <div className="p-3 rounded-full bg-purple-100 dark:bg-purple-900 w-fit mx-auto">
-              <User className="h-5 w-5 text-purple-600" />
-            </div>
-            <h4 className="font-medium text-sm">Profile Metrics</h4>
-            <p className="text-xs text-muted-foreground">
-              Follower ratio, account age, activity patterns
-            </p>
-          </div>
-        </div>
+          {/* Required Fields Note */}
+          <p className="text-sm text-muted-foreground text-center">
+            * Required fields. All data is processed locally for analysis.
+          </p>
+        </form>
       </CardContent>
     </Card>
   )
