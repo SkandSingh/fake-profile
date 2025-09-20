@@ -322,24 +322,24 @@ export function ProfileAnalysisDashboard() {
                 result={{
                   trustScore: currentAnalysis.trustScore,
                   textScore: Math.round(
-                    (currentAnalysis.textAnalysis?.sentimentScore + 
-                     currentAnalysis.textAnalysis?.authenticity + 
-                     (100 - (currentAnalysis.textAnalysis?.toxicity || 0))) / 3
+                    ((currentAnalysis.textAnalysis?.sentimentScore || 50) + 
+                     (currentAnalysis.textAnalysis?.authenticity || 50) + 
+                     (100 - (currentAnalysis.textAnalysis?.toxicity || 50))) / 3
                   ),
-                  imageScore: Math.round(
-                    (currentAnalysis.imageAnalysis?.imageQuality + 
-                     (100 - (currentAnalysis.imageAnalysis?.manipulation || 0)) + 
-                     (currentAnalysis.imageAnalysis?.confidence || 85)) / 3
-                  ),
+                  imageScore: currentAnalysis.imageAnalysis ? Math.round(
+                    ((currentAnalysis.imageAnalysis.imageQuality || 50) + 
+                     (100 - (currentAnalysis.imageAnalysis.manipulation || 50)) + 
+                     (currentAnalysis.imageAnalysis.confidence || 50)) / 3
+                  ) : 0,
                   metricsScore: Math.round(
-                    Math.min(
-                      (currentAnalysis.profileMetrics?.accountAge / 365) * 20 + 
-                      Math.min((currentAnalysis.profileMetrics?.followersToFollowing || 1) * 10, 30) + 
-                      (currentAnalysis.profileMetrics?.engagement.rate || 2) * 15 + 
+                    Math.max(0, Math.min(
+                      ((currentAnalysis.profileMetrics?.accountAge || 365) / 365) * 20 + 
+                      Math.min(((currentAnalysis.profileMetrics?.followersToFollowing || 1) * 10), 30) + 
+                      ((currentAnalysis.profileMetrics?.engagement?.rate || 1) * 15) + 
                       (Object.values(currentAnalysis.profileMetrics?.verification || {}).filter(Boolean).length * 10) -
-                      (currentAnalysis.profileMetrics?.riskFactors?.length || 0) * 5,
+                      ((currentAnalysis.profileMetrics?.riskFactors?.length || 0) * 5),
                       100
-                    )
+                    ))
                   ),
                   explanation: [
                     currentAnalysis.trustScore >= 80 ? "Profile shows strong indicators of authenticity and trustworthiness." : 

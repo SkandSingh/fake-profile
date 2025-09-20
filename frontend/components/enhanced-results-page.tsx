@@ -454,11 +454,11 @@ function ModelContributionChart({ data }: { data: Array<{ name: string, score: n
                 <div
                   className="h-6 rounded-full flex items-center justify-end pr-3 text-white text-sm font-medium transition-all duration-700 ease-out"
                   style={{
-                    width: `${(item.contribution / totalContribution) * 100}%`,
+                    width: `${Math.max(5, item.score)}%`, // Show actual score percentage, min 5% for visibility
                     backgroundColor: item.color
                   }}
                 >
-                  {((item.contribution / totalContribution) * 100).toFixed(0)}%
+                  {item.score}%
                 </div>
               </div>
             </div>
@@ -467,7 +467,7 @@ function ModelContributionChart({ data }: { data: Array<{ name: string, score: n
       </div>
       
       <div className="text-xs text-muted-foreground text-center">
-        Total Contribution: {totalContribution.toFixed(1)} / {Math.max(...data.map(d => d.score)).toFixed(1)} (Trust Score)
+        Total Contribution: {totalContribution.toFixed(1)} points to Trust Score
       </div>
     </div>
   )
