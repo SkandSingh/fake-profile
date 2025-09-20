@@ -243,4 +243,9 @@ async def detect_fake_base64(request: VisionAnalysisRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8002)
+    import os
+    
+    host = os.getenv("HOST", "127.0.0.1")
+    port = int(os.getenv("PORT", 8002))
+    
+    uvicorn.run(app, host=host, port=port)

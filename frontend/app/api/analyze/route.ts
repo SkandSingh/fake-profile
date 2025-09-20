@@ -2,11 +2,26 @@ import { NextRequest, NextResponse } from 'next/server'
 
 // Configuration for backend services
 const BACKEND_CONFIG = {
-  text_api: { url: 'http://127.0.0.1:8000', timeout: 10000 },
-  vision_api: { url: 'http://127.0.0.1:8002', timeout: 15000 },
-  tabular_api: { url: 'http://127.0.0.1:8003', timeout:8000 },
-  ensemble_api: { url: 'http://127.0.0.1:8004', timeout: 12000 },
-  profile_extraction_api: { url: 'http://127.0.0.1:8005', timeout: 30000 }
+  text_api: { 
+    url: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000', 
+    timeout: 10000 
+  },
+  vision_api: { 
+    url: process.env.NEXT_PUBLIC_VISION_API_URL || 'http://127.0.0.1:8002', 
+    timeout: 15000 
+  },
+  tabular_api: { 
+    url: process.env.NEXT_PUBLIC_TABULAR_API_URL || 'http://127.0.0.1:8003', 
+    timeout: 8000 
+  },
+  ensemble_api: { 
+    url: process.env.NEXT_PUBLIC_ENSEMBLE_API_URL || 'http://127.0.0.1:8004', 
+    timeout: 12000 
+  },
+  profile_extraction_api: { 
+    url: process.env.NEXT_PUBLIC_EXTRACTION_API_URL || 'http://127.0.0.1:8005', 
+    timeout: 30000 
+  }
 }
 
 // Types for the API

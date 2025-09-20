@@ -1,0 +1,60 @@
+services:
+  # Text Analysis API
+  - type: web
+    name: profile-detector-text-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python api/text_analysis_simple.py
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: HOST
+        value: 0.0.0.0
+
+  # Vision Detection API  
+  - type: web
+    name: profile-detector-vision-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python api/vision_detection_simple.py
+    envVars:
+      - key: PORT
+        value: 8002
+      - key: HOST
+        value: 0.0.0.0
+
+  # Tabular Analysis API
+  - type: web
+    name: profile-detector-tabular-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python api/production_tabular_api.py
+    envVars:
+      - key: PORT
+        value: 8003
+      - key: HOST
+        value: 0.0.0.0
+
+  # Ensemble API
+  - type: web
+    name: profile-detector-ensemble-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python api/ensemble_api.py
+    envVars:
+      - key: PORT
+        value: 8004
+      - key: HOST
+        value: 0.0.0.0
+
+  # Profile Extraction API
+  - type: web
+    name: profile-detector-extraction-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python api/profile_extraction_simple.py
+    envVars:
+      - key: PORT
+        value: 8005
+      - key: HOST
+        value: 0.0.0.0
