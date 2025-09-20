@@ -1,9 +1,10 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
+  "framework": "nextjs",
+  "public": true,
+  "functions": {
+    "app/api/analyze/route.ts": {
+      "maxDuration": 30
     }
-  ]
+  }
 }

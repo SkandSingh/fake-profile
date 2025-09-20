@@ -61,13 +61,13 @@ export function EnhancedResultsPage({ result }: EnhancedResultsPageProps) {
     }
     
     // Image analysis red flags
-    if (imageAnalysis.manipulation > 60) {
+    if (imageAnalysis && imageAnalysis.manipulation > 60) {
       flags.push({ type: 'high', message: 'High probability of image manipulation' })
     }
-    if (imageAnalysis.imageQuality < 40) {
+    if (imageAnalysis && imageAnalysis.imageQuality < 40) {
       flags.push({ type: 'medium', message: 'Poor image quality detected' })
     }
-    if (!imageAnalysis.metadata.originalSource) {
+    if (imageAnalysis && imageAnalysis.metadata && !imageAnalysis.metadata.originalSource) {
       flags.push({ type: 'medium', message: 'Image may not be original source' })
     }
     
@@ -96,23 +96,30 @@ export function EnhancedResultsPage({ result }: EnhancedResultsPageProps) {
   const redFlags = generateRedFlags()
   
   // Calculate model contributions for bar chart
+  const textContribution = (result.textScore * 0.35) / 100 * result.trustScore
+  const imageContribution = (result.imageScore * 0.25) / 100 * result.trustScore  
+  const metricsContribution = (result.metricsScore * 0.40) / 100 * result.trustScore
+
   const modelContributions = [
     {
       name: 'Text Analysis',
       score: result.textScore,
-      contribution: (result.textScore * 0.35), // 35% weight
+      contribution: textContribution,
+      weight: 35,
       color: '#3b82f6' // blue
     },
     {
       name: 'Image Analysis', 
       score: result.imageScore,
-      contribution: (result.imageScore * 0.25), // 25% weight
+      contribution: imageContribution,
+      weight: 25,
       color: '#10b981' // emerald
     },
     {
       name: 'Profile Metrics',
       score: result.metricsScore,
-      contribution: (result.metricsScore * 0.40), // 40% weight
+      contribution: metricsContribution,
+      weight: 40,
       color: '#8b5cf6' // violet
     }
   ]
@@ -421,8 +428,8 @@ function ModelScoreCard({
 }
 
 // Model Contribution Bar Chart
-function ModelContributionChart({ data }: { data: Array<{ name: string, score: number, contribution: number, color: string }> }) {
-  const maxContribution = Math.max(...data.map(d => d.contribution))
+function ModelContributionChart({ data }: { data: Array<{ name: string, score: number, contribution: number, weight: number, color: string }> }) {
+  const totalContribution = data.reduce((sum, d) => sum + d.contribution, 0)
   
   return (
     <div className="space-y-6">
@@ -437,7 +444,7 @@ function ModelContributionChart({ data }: { data: Array<{ name: string, score: n
               <span className="font-medium">{item.name}</span>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">
-                  {item.score}% → {item.contribution.toFixed(1)} pts
+                  {item.score}% × {item.weight}% = {item.contribution.toFixed(1)} pts
                 </span>
               </div>
             </div>
@@ -447,11 +454,11 @@ function ModelContributionChart({ data }: { data: Array<{ name: string, score: n
                 <div
                   className="h-6 rounded-full flex items-center justify-end pr-3 text-white text-sm font-medium transition-all duration-700 ease-out"
                   style={{
-                    width: `${(item.contribution / maxContribution) * 100}%`,
+                    width: `${(item.contribution / totalContribution) * 100}%`,
                     backgroundColor: item.color
                   }}
                 >
-                  {item.contribution.toFixed(1)}
+                  {((item.contribution / totalContribution) * 100).toFixed(0)}%
                 </div>
               </div>
             </div>
@@ -459,13 +466,8 @@ function ModelContributionChart({ data }: { data: Array<{ name: string, score: n
         ))}
       </div>
       
-      <div className="pt-4 border-t">
-        <div className="text-center">
-          <div className="text-sm text-muted-foreground">Total Weighted Score</div>
-          <div className="text-2xl font-bold">
-            {data.reduce((sum, item) => sum + item.contribution, 0).toFixed(1)} / 100
-          </div>
-        </div>
+      <div className="text-xs text-muted-foreground text-center">
+        Total Contribution: {totalContribution.toFixed(1)} / {Math.max(...data.map(d => d.score)).toFixed(1)} (Trust Score)
       </div>
     </div>
   )
