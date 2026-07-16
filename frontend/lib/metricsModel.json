@@ -1,0 +1,77 @@
+{
+  "featureKeys": [
+    "hasProfilePic",
+    "usernameDigitRatio",
+    "fullnameWordCount",
+    "fullnameDigitRatio",
+    "nameEqualsUsername",
+    "descriptionLength",
+    "hasExternalUrl",
+    "isPrivate",
+    "postCount",
+    "followerCount",
+    "followCount"
+  ],
+  "featureColumns": [
+    "profile pic",
+    "nums/length username",
+    "fullname words",
+    "nums/length fullname",
+    "name==username",
+    "description length",
+    "external URL",
+    "private",
+    "#posts",
+    "#followers",
+    "#follows"
+  ],
+  "means": [
+    0.7013888888888888,
+    0.16383680555555558,
+    1.4600694444444444,
+    0.03609375,
+    0.034722222222222224,
+    22.62326388888889,
+    0.11631944444444445,
+    0.3819444444444444,
+    107.48958333333333,
+    85307.23611111111,
+    508.38194444444446
+  ],
+  "stds": [
+    0.4576488997387613,
+    0.21390962468818456,
+    1.051686474013008,
+    0.1250118809457892,
+    0.18307536564533428,
+    37.67024430520323,
+    0.3206075970537508,
+    0.485863031936439,
+    401.68529075404257,
+    909358.0550265901,
+    917.1840338967463
+  ],
+  "coefficients": [
+    -1.828157449080831,
+    1.6762018999105992,
+    -0.3130586389929444,
+    0.4465169902465364,
+    0.6814973857048179,
+    -0.3879222656030485,
+    -1.164947973676085,
+    -0.17132071766207432,
+    -2.5344199696764655,
+    -0.28159646811040695,
+    -0.1426991317187943
+  ],
+  "intercept": 0.21480654657141612,
+  "metrics": {
+    "accuracy": 0.875,
+    "precision": 0.8813559322033898,
+    "recall": 0.8666666666666667,
+    "auc": 0.936111111111111,
+    "test_samples": 120,
+    "train_samples": 576
+  },
+  "trainedOn": "Kaggle free4ever1/instagram-fake-spammer-genuine-accounts"
+}
