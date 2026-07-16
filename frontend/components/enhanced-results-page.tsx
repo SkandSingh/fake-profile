@@ -387,7 +387,7 @@ function ModelScoreCard({
       return [
         { label: 'Account Age', value: Math.min((data.accountAge / 365) * 25, 100) || 0 },
         { label: 'Engagement', value: (data.engagement?.rate || 0) * 10 },
-        { label: 'Verification', value: (Object.values(data.verification || {}).filter(Boolean).length / 3) * 100 }
+        { label: 'Verification', value: Object.values(data.verification || {}).some(Boolean) ? 100 : 0 }
       ]
     }
   }
