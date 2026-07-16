@@ -23,7 +23,7 @@ import {
 interface ExportData {
   id: string
   timestamp: Date
-  inputType: 'url' | 'file'
+  inputType: 'url' | 'manual'
   inputValue: string
   trustScore: number
   textAnalysis?: any
@@ -95,27 +95,22 @@ export function ResultExporter({ data, onExport }: ResultExporterProps) {
       // Text Analysis
       ...(data.textAnalysis ? [
         ['--- Text Analysis ---', ''],
-        ['Sentiment', data.textAnalysis.sentiment],
-        ['Sentiment Score', `${data.textAnalysis.sentimentScore}%`],
+        ['Authenticity Score', `${data.textAnalysis.authenticity}%`],
         ['Toxicity', `${data.textAnalysis.toxicity}%`],
-        ['Authenticity', `${data.textAnalysis.authenticity}%`],
-        ['Language', data.textAnalysis.languageDetected],
-        ['Keywords', data.textAnalysis.keywords.join(', ')],
+        ['Confidence', `${data.textAnalysis.confidence}%`],
         ['']
       ] : []),
-      
+
       // Image Analysis
-      ...(data.imageAnalysis ? [
+      ...(data.imageAnalysis?.imageProvided ? [
         ['--- Image Analysis ---', ''],
-        ['Face Detected', data.imageAnalysis.faceDetected ? 'Yes' : 'No'],
         ['Image Quality', `${data.imageAnalysis.imageQuality}%`],
         ['Manipulation Risk', `${data.imageAnalysis.manipulation}%`],
-        ['Original Source', data.imageAnalysis.metadata.originalSource ? 'Yes' : 'No'],
-        ['Date Consistency', data.imageAnalysis.metadata.dateConsistency ? 'Yes' : 'No'],
-        ['Similar Images Found', data.imageAnalysis.similarImages.toString()],
+        ['Looks Authentic', data.imageAnalysis.metadata?.originalSource === null ? 'Unassessed' : data.imageAnalysis.metadata.originalSource ? 'Yes' : 'No'],
+        ['Notes', data.imageAnalysis.reasoning],
         ['']
       ] : []),
-      
+
       // Profile Metrics
       ...(data.profileMetrics ? [
         ['--- Profile Metrics ---', ''],
@@ -123,8 +118,6 @@ export function ResultExporter({ data, onExport }: ResultExporterProps) {
         ['Followers Ratio', data.profileMetrics.followersToFollowing.toFixed(2)],
         ['Engagement Rate', `${data.profileMetrics.engagement.rate}%`],
         ['Activity Pattern', data.profileMetrics.activityPattern],
-        ['Email Verified', data.profileMetrics.verification.email ? 'Yes' : 'No'],
-        ['Phone Verified', data.profileMetrics.verification.phone ? 'Yes' : 'No'],
         ['Identity Verified', data.profileMetrics.verification.identity ? 'Yes' : 'No'],
         ['Risk Factors', data.profileMetrics.riskFactors.join('; ')]
       ] : [])
@@ -188,25 +181,22 @@ export function ResultExporter({ data, onExport }: ResultExporterProps) {
         ${data.textAnalysis ? `
         <div class="section">
           <h2>Text Analysis</h2>
-          <div class="metric"><span>Sentiment:</span><span class="${data.textAnalysis.sentiment === 'positive' ? 'high' : data.textAnalysis.sentiment === 'negative' ? 'low' : 'medium'}">${data.textAnalysis.sentiment} (${data.textAnalysis.sentimentScore}%)</span></div>
           <div class="metric"><span>Authenticity:</span><span>${data.textAnalysis.authenticity}%</span></div>
           <div class="metric"><span>Toxicity:</span><span>${data.textAnalysis.toxicity}%</span></div>
-          <div class="metric"><span>Language:</span><span>${data.textAnalysis.languageDetected}</span></div>
-          <div class="metric"><span>Keywords:</span><span>${data.textAnalysis.keywords.join(', ')}</span></div>
+          <div class="metric"><span>Confidence:</span><span>${data.textAnalysis.confidence}%</span></div>
         </div>
         ` : ''}
-        
-        ${data.imageAnalysis ? `
+
+        ${data.imageAnalysis?.imageProvided ? `
         <div class="section">
           <h2>Image Analysis</h2>
-          <div class="metric"><span>Face Detected:</span><span>${data.imageAnalysis.faceDetected ? 'Yes' : 'No'}</span></div>
           <div class="metric"><span>Image Quality:</span><span>${data.imageAnalysis.imageQuality}%</span></div>
           <div class="metric"><span>Manipulation Risk:</span><span>${data.imageAnalysis.manipulation}%</span></div>
-          <div class="metric"><span>Original Source:</span><span>${data.imageAnalysis.metadata.originalSource ? 'Verified' : 'Not Verified'}</span></div>
-          <div class="metric"><span>Similar Images:</span><span>${data.imageAnalysis.similarImages} found</span></div>
+          <div class="metric"><span>Looks Authentic:</span><span>${data.imageAnalysis.metadata?.originalSource === null ? 'Unassessed' : data.imageAnalysis.metadata.originalSource ? 'Yes' : 'No'}</span></div>
+          <div class="metric"><span>Notes:</span><span>${data.imageAnalysis.reasoning}</span></div>
         </div>
         ` : ''}
-        
+
         ${data.profileMetrics ? `
         <div class="section">
           <h2>Profile Metrics</h2>
@@ -214,7 +204,7 @@ export function ResultExporter({ data, onExport }: ResultExporterProps) {
           <div class="metric"><span>Followers Ratio:</span><span>${data.profileMetrics.followersToFollowing.toFixed(2)}</span></div>
           <div class="metric"><span>Engagement Rate:</span><span>${data.profileMetrics.engagement.rate}%</span></div>
           <div class="metric"><span>Activity Pattern:</span><span>${data.profileMetrics.activityPattern}</span></div>
-          <div class="metric"><span>Verification Status:</span><span>Email: ${data.profileMetrics.verification.email ? '✓' : '✗'}, Phone: ${data.profileMetrics.verification.phone ? '✓' : '✗'}, Identity: ${data.profileMetrics.verification.identity ? '✓' : '✗'}</span></div>
+          <div class="metric"><span>Identity Verified:</span><span>${data.profileMetrics.verification.identity ? '✓' : '✗'}</span></div>
           ${data.profileMetrics.riskFactors.length > 0 ? `<div class="metric"><span>Risk Factors:</span><span style="color: #ef4444;">${data.profileMetrics.riskFactors.join(', ')}</span></div>` : ''}
         </div>
         ` : ''}

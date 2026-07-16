@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import ProfileInputForm from './profile-input-form'
+import { UrlExtractForm, type ExtractedProfileData } from './url-extract-form'
 import { EnhancedResultsPage } from './enhanced-results-page'
 import { ResultExporter } from './result-exporter'
 import { 
@@ -22,84 +23,53 @@ import {
 interface AnalysisResult {
   id: string
   timestamp: Date
-  inputType: 'url' | 'file'
+  inputType: 'url' | 'manual'
   inputValue: string
   trustScore: number
   status: 'completed' | 'processing' | 'failed'
-  textAnalysis?: any
-  imageAnalysis?: any
-  profileMetrics?: any
-  chartData?: any
+  apiResult: any
 }
 
 export function ProfileAnalysisDashboard() {
   const [currentAnalysis, setCurrentAnalysis] = useState<AnalysisResult | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysisHistory, setAnalysisHistory] = useState<AnalysisResult[]>([])
+  const [activeTab, setActiveTab] = useState<'url' | 'manual'>('url')
+  const [prefillData, setPrefillData] = useState<Partial<{
+    username: string; displayName: string; platform: string; bio: string
+    followerCount: number; followingCount: number; postCount: number
+  }> | undefined>(undefined)
+  const [extractNotice, setExtractNotice] = useState<string | null>(null)
 
-  // Profile Purity mock data aligned with problem statement
-  const mockAnalysisResult: AnalysisResult = {
-    id: 'analysis-1',
-    timestamp: new Date(),
-    inputType: 'url',
-    inputValue: 'https://twitter.com/example',
-    trustScore: 76,
-    status: 'completed',
-    textAnalysis: {
-      sentiment: 'positive' as const,
-      sentimentScore: 82,
-      toxicity: 15,
-      authenticity: 88,
-      readability: 75,
-      keywords: ['technology', 'innovation', 'startup', 'AI'],
-      languageDetected: 'English',
-      confidence: 94
-    },
-    imageAnalysis: {
-      faceDetected: true,
-      imageQuality: 85,
-      manipulation: 12,
-      metadata: {
-        originalSource: true,
-        dateConsistency: true,
-        locationConsistency: false
-      },
-      similarImages: 3,
-      confidence: 91
-    },
-    profileMetrics: {
-      accountAge: 1825, // ~5 years
-      followersToFollowing: 2.3,
-      engagement: {
-        avgLikes: 45,
-        avgComments: 12,
-        avgShares: 8,
-        rate: 3.2
-      },
-      activityPattern: 'consistent' as const,
-      verification: {
-        email: true,
-        phone: true,
-        identity: false
-      },
-      riskFactors: ['Unverified identity', 'Location inconsistency']
-    }
+  const handleUrlExtracted = (data: ExtractedProfileData) => {
+    setPrefillData({
+      username: data.username,
+      displayName: data.displayName,
+      platform: data.platform === 'unknown' ? undefined : data.platform,
+      bio: data.bio,
+      followerCount: data.followerCount,
+      followingCount: data.followingCount,
+      postCount: data.postCount,
+    })
+    setExtractNotice(
+      data.manualInputRequired
+        ? `Auto-extracted what we could${data.extractionError ? ` (${data.extractionError})` : ''}. Please fill in or confirm the rest: ${data.missingFields.join(', ') || 'remaining fields'}.`
+        : 'Auto-extracted successfully - review and submit below.'
+    )
+    setActiveTab('manual')
   }
 
   const handleAnalysisComplete = (apiResult: any) => {
-    // Transform API result to match our component interface  
     const result: AnalysisResult = {
       id: `analysis-${Date.now()}`,
       timestamp: new Date(),
-      inputType: 'url', // Using 'url' as fallback for manual type
-      inputValue: 'Manual Input',
+      inputType: prefillData ? 'url' : 'manual',
+      inputValue: apiResult.profileSummary?.username || 'Manual Input',
       trustScore: apiResult.trustScore,
       status: 'completed',
-      textAnalysis: apiResult.breakdown?.textAnalysis || {},
-      imageAnalysis: apiResult.breakdown?.imageAnalysis || {},
-      profileMetrics: apiResult.breakdown?.profileMetrics || {}
+      apiResult
     }
-    
+
     setCurrentAnalysis(result)
     setAnalysisHistory(prev => [result, ...prev.slice(0, 4)]) // Keep last 5 analyses
     setIsAnalyzing(false)
@@ -132,6 +102,9 @@ export function ProfileAnalysisDashboard() {
   const handleNewAnalysis = () => {
     setCurrentAnalysis(null)
     setIsAnalyzing(false)
+    setActiveTab('url')
+    setPrefillData(undefined)
+    setExtractNotice(null)
   }
 
   const getTrustScoreColor = (score: number) => {
@@ -223,11 +196,38 @@ export function ProfileAnalysisDashboard() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Search className="h-5 w-5" />
-                  Paste URL & Auto-Analyze
+                  {activeTab === 'url' ? 'Paste URL & Auto-Analyze' : 'Manual Profile Analysis'}
                 </CardTitle>
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={activeTab === 'url' ? 'default' : 'outline'}
+                    onClick={() => setActiveTab('url')}
+                  >
+                    Paste URL
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={activeTab === 'manual' ? 'default' : 'outline'}
+                    onClick={() => setActiveTab('manual')}
+                  >
+                    Manual Entry
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
-                <ProfileInputForm onAnalysisComplete={handleAnalysisComplete} />
+                {activeTab === 'url' ? (
+                  <UrlExtractForm onExtracted={handleUrlExtracted} />
+                ) : (
+                  <>
+                    {extractNotice && (
+                      <div className="mb-4 p-3 rounded-md bg-blue-50 text-sm text-blue-800">{extractNotice}</div>
+                    )}
+                    <ProfileInputForm onAnalysisComplete={handleAnalysisComplete} initialData={prefillData} />
+                  </>
+                )}
               </CardContent>
             </Card>
 
@@ -297,8 +297,17 @@ export function ProfileAnalysisDashboard() {
                   
                   <div className="flex items-center gap-2">
                     {currentAnalysis && (
-                      <ResultExporter 
-                        data={currentAnalysis}
+                      <ResultExporter
+                        data={{
+                          id: currentAnalysis.id,
+                          timestamp: currentAnalysis.timestamp,
+                          inputType: currentAnalysis.inputType,
+                          inputValue: currentAnalysis.inputValue,
+                          trustScore: currentAnalysis.trustScore,
+                          textAnalysis: currentAnalysis.apiResult.breakdown.textAnalysis,
+                          imageAnalysis: currentAnalysis.apiResult.breakdown.imageAnalysis,
+                          profileMetrics: currentAnalysis.apiResult.breakdown.profileMetrics,
+                        }}
                         onExport={(format) => console.log(`Exported as ${format}`)}
                       />
                     )}
@@ -316,55 +325,17 @@ export function ProfileAnalysisDashboard() {
               </CardContent>
             </Card>
 
-            {/* Enhanced Results Display */}
+            {/* Enhanced Results Display - values come straight from the API response (real metrics-model + Gemini output), nothing re-derived or randomized on the client */}
             {currentAnalysis && !isAnalyzing && (
-              <EnhancedResultsPage 
+              <EnhancedResultsPage
                 result={{
                   trustScore: currentAnalysis.trustScore,
-                  textScore: Math.round(
-                    ((currentAnalysis.textAnalysis?.sentimentScore || 50) + 
-                     (currentAnalysis.textAnalysis?.authenticity || 50) + 
-                     (100 - (currentAnalysis.textAnalysis?.toxicity || 50))) / 3
-                  ),
-                  imageScore: currentAnalysis.imageAnalysis ? Math.round(
-                    ((currentAnalysis.imageAnalysis.imageQuality || 50) + 
-                     (100 - (currentAnalysis.imageAnalysis.manipulation || 50)) + 
-                     (currentAnalysis.imageAnalysis.confidence || 50)) / 3
-                  ) : 0,
-                  metricsScore: Math.round(
-                    Math.max(0, Math.min(
-                      ((currentAnalysis.profileMetrics?.accountAge || 365) / 365) * 20 + 
-                      Math.min(((currentAnalysis.profileMetrics?.followersToFollowing || 1) * 10), 30) + 
-                      ((currentAnalysis.profileMetrics?.engagement?.rate || 1) * 15) + 
-                      (Object.values(currentAnalysis.profileMetrics?.verification || {}).filter(Boolean).length * 10) -
-                      ((currentAnalysis.profileMetrics?.riskFactors?.length || 0) * 5),
-                      100
-                    ))
-                  ),
-                  explanation: [
-                    currentAnalysis.trustScore >= 80 ? "Profile shows strong indicators of authenticity and trustworthiness." : 
-                    currentAnalysis.trustScore >= 60 ? "Profile appears moderately trustworthy with some areas requiring attention." :
-                    currentAnalysis.trustScore >= 40 ? "Profile raises several concerns that warrant careful consideration." :
-                    "Profile exhibits multiple risk factors suggesting potential fraudulent activity.",
-                    
-                    currentAnalysis.textAnalysis?.sentiment === 'positive' ? "Text content demonstrates authentic language patterns and positive sentiment." :
-                    currentAnalysis.textAnalysis?.sentiment === 'negative' ? "Text analysis reveals concerning patterns in language use or sentiment." :
-                    "Text content shows neutral sentiment with standard language patterns.",
-                    
-                    currentAnalysis.imageAnalysis?.imageQuality > 80 ? "Profile images show high quality with no signs of manipulation." :
-                    currentAnalysis.imageAnalysis?.manipulation > 50 ? "Image analysis detected potential manipulation or quality issues." :
-                    "Image analysis shows standard quality with no major concerns.",
-                    
-                    currentAnalysis.profileMetrics?.activityPattern === 'consistent' ? "Account metrics indicate natural, organic growth and engagement patterns." :
-                    currentAnalysis.profileMetrics?.activityPattern === 'suspicious' ? "Account metrics suggest potential artificial inflation or suspicious activity." :
-                    "Account metrics show normal patterns within expected ranges."
-                  ],
-                  breakdown: {
-                    textAnalysis: currentAnalysis.textAnalysis,
-                    imageAnalysis: currentAnalysis.imageAnalysis,
-                    profileMetrics: currentAnalysis.profileMetrics
-                  },
-                  processingTime: Math.floor(Math.random() * 2000) + 1000,
+                  textScore: currentAnalysis.apiResult.textScore,
+                  imageScore: currentAnalysis.apiResult.imageScore,
+                  metricsScore: currentAnalysis.apiResult.metricsScore,
+                  explanation: currentAnalysis.apiResult.explanation,
+                  breakdown: currentAnalysis.apiResult.breakdown,
+                  processingTime: currentAnalysis.apiResult.processingTimeMs ?? 0,
                   analysisId: currentAnalysis.id
                 }}
               />

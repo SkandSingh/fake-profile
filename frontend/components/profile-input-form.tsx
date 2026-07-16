@@ -18,33 +18,33 @@ interface ProfileData {
   postCount: number
   accountAge?: number
   verified: boolean
+  isPrivate: boolean
   profilePicture?: File
 }
 
+// Matches the response shape of POST /api/analyze (see app/api/analyze/route.ts),
+// plus processingTimeMs which this form measures client-side and attaches.
 interface AnalysisResult {
   trustScore: number
-  nlpScore: number
-  visionScore: number
-  profileScore: number
-  ensemble: {
-    trust_score: number
-    risk_level: string
-    confidence: number
+  textScore: number
+  imageScore: number
+  metricsScore: number
+  explanation: string[]
+  breakdown: {
+    textAnalysis: any
+    imageAnalysis: any
+    profileMetrics: any
   }
-  summary: string
-  details: {
-    nlp?: any
-    vision?: any
-    profile?: any
-    tabular?: any
-  }
+  profileSummary?: any
+  processingTimeMs?: number
 }
 
 interface ProfileInputFormProps {
   onAnalysisComplete: (result: AnalysisResult) => void
+  initialData?: Partial<ProfileData>
 }
 
-export default function ProfileInputForm({ onAnalysisComplete }: ProfileInputFormProps) {
+export default function ProfileInputForm({ onAnalysisComplete, initialData }: ProfileInputFormProps) {
   const [formData, setFormData] = useState<ProfileData>({
     username: '',
     displayName: '',
@@ -55,8 +55,18 @@ export default function ProfileInputForm({ onAnalysisComplete }: ProfileInputFor
     followingCount: 0,
     postCount: 0,
     accountAge: undefined,
-    verified: false
+    verified: false,
+    isPrivate: false,
+    ...initialData
   })
+
+  // Re-fill the form if a URL extraction result arrives after mount (e.g. user pastes a URL, then this form mounts with data).
+  useEffect(() => {
+    if (initialData) {
+      setFormData(prev => ({ ...prev, ...initialData }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData])
 
   const [errors, setErrors] = useState<Partial<Record<keyof ProfileData, string>>>({})
   const [isLoading, setIsLoading] = useState(false)
@@ -187,13 +197,13 @@ export default function ProfileInputForm({ onAnalysisComplete }: ProfileInputFor
     }
 
     setIsLoading(true)
+    const startTime = Date.now()
 
     try {
       // Prepare the request payload
       const payload: any = {
         type: 'manual',
         profileData: {
-          profileUrl: `${formData.platform}.com/${formData.username}`, // Synthetic URL for API compatibility
           platform: formData.platform,
           username: formData.username,
           displayName: formData.displayName,
@@ -203,7 +213,7 @@ export default function ProfileInputForm({ onAnalysisComplete }: ProfileInputFor
           postCount: formData.postCount,
           accountAge: formData.accountAge,
           verified: formData.verified,
-          posts: [], // No post analysis for manual input
+          isPrivate: formData.isPrivate,
           profileText: formData.profileText
         }
       }
@@ -233,7 +243,7 @@ export default function ProfileInputForm({ onAnalysisComplete }: ProfileInputFor
       }
 
       const result: AnalysisResult = await response.json()
-      onAnalysisComplete(result)
+      onAnalysisComplete({ ...result, processingTimeMs: Date.now() - startTime })
 
     } catch (error) {
       console.error('Analysis error:', error)
@@ -476,8 +486,8 @@ export default function ProfileInputForm({ onAnalysisComplete }: ProfileInputFor
 
               <div className="space-y-2">
                 <Label htmlFor="verified">Verification Status</Label>
-                <select 
-                  value={formData.verified ? 'true' : 'false'} 
+                <select
+                  value={formData.verified ? 'true' : 'false'}
                   onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateField('verified', e.target.value === 'true')}
                   className="w-full px-3 py-2 border rounded-md border-gray-300"
                   disabled={isLoading}
@@ -486,6 +496,18 @@ export default function ProfileInputForm({ onAnalysisComplete }: ProfileInputFor
                   <option value="true">Verified Account</option>
                 </select>
               </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                id="isPrivate"
+                type="checkbox"
+                checked={formData.isPrivate}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateField('isPrivate', e.target.checked)}
+                disabled={isLoading}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="isPrivate" className="font-normal">Account is private</Label>
             </div>
           </div>
 

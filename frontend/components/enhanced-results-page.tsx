@@ -60,14 +60,14 @@ export function EnhancedResultsPage({ result }: EnhancedResultsPageProps) {
       flags.push({ type: 'medium', message: 'Low coherence in text content' })
     }
     
-    // Image analysis red flags
-    if (imageAnalysis && imageAnalysis.manipulation > 60) {
+    // Image analysis red flags (only meaningful when a photo was actually provided)
+    if (imageAnalysis && imageAnalysis.imageProvided && imageAnalysis.manipulation > 60) {
       flags.push({ type: 'high', message: 'High probability of image manipulation' })
     }
-    if (imageAnalysis && imageAnalysis.imageQuality < 40) {
+    if (imageAnalysis && imageAnalysis.imageProvided && imageAnalysis.imageQuality < 40) {
       flags.push({ type: 'medium', message: 'Poor image quality detected' })
     }
-    if (imageAnalysis && imageAnalysis.metadata && !imageAnalysis.metadata.originalSource) {
+    if (imageAnalysis && imageAnalysis.metadata && imageAnalysis.metadata.originalSource === false) {
       flags.push({ type: 'medium', message: 'Image may not be original source' })
     }
     

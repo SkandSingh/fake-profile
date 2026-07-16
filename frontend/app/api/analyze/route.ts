@@ -1,185 +1,176 @@
 import { NextRequest, NextResponse } from "next/server";
+import { computeMetricsScore, getMetricsRiskFactors, type MetricsProfileInput } from "@/lib/metricsModel";
+import { analyzeWithGemini } from "@/lib/gemini";
+
+/**
+ * Combines two independently-computed, real signals into a trust score:
+ *  - metricsScore: a logistic regression trained offline on a labeled
+ *    Instagram fake-account dataset (see backend/ml/train_metrics_model.py),
+ *    applied deterministically via lib/metricsModel.ts.
+ *  - geminiScore: Gemini's read of the bio text (and photo, if provided),
+ *    via lib/gemini.ts. Optional - if GEMINI_API_KEY isn't configured or the
+ *    call fails, this component is left out and the response says so,
+ *    rather than inventing a number in its place.
+ *
+ * No Math.random() anywhere below: the same profileData always produces
+ * the same trustScore.
+ */
+
+interface ProfileDataInput {
+  username?: string;
+  displayName?: string;
+  platform?: string;
+  bio?: string;
+  profileText?: string;
+  followerCount?: number;
+  followingCount?: number;
+  postCount?: number;
+  accountAge?: number;
+  verified?: boolean;
+  isPrivate?: boolean;
+}
+
+interface FileDataInput {
+  name: string;
+  type: string;
+  size: number;
+  content: string; // base64, no data-url prefix
+}
+
+function isValidProfileData(data: unknown): data is ProfileDataInput {
+  if (!data || typeof data !== "object") return false;
+  const p = data as Record<string, unknown>;
+  const numericFieldsValid = ["followerCount", "followingCount", "postCount", "accountAge"].every(
+    (key) => p[key] === undefined || (typeof p[key] === "number" && Number.isFinite(p[key] as number) && (p[key] as number) >= 0)
+  );
+  return typeof p.username === "string" && typeof p.bio === "string" && numericFieldsValid;
+}
 
 export async function POST(request: NextRequest) {
+  let body: { type?: string; profileData?: unknown; fileData?: FileDataInput };
   try {
-    const { type, profileData } = await request.json();
-    if (type !== "manual" || !profileData) {
-      return NextResponse.json({ error: "Only manual input supported" }, { status: 400 });
-    }
-    
-    // Strict scoring algorithm for better fake detection
-    const textContent = `${profileData.bio || ''} ${profileData.profileText || ''}`.trim();
-    const words = textContent.split(' ').filter(word => word.length > 0).length;
-    const followersToFollowing = profileData.followingCount > 0 ? 
-      profileData.followerCount / profileData.followingCount : 0;
-    
-    // Start with base suspicious score
-    let trustScore = 30; // Much lower base score
-    let riskFactors = [];
-    let redFlags = 0;
-    
-    // TEXT ANALYSIS - Strict rules
-    if (words === 0) {
-      redFlags += 3; // Empty bio is highly suspicious
-      riskFactors.push("Empty profile bio");
-    } else if (words < 5) {
-      redFlags += 2; // Very short bio suspicious
-      riskFactors.push("Extremely short bio");
-    } else if (words >= 10) {
-      trustScore += 15; // Good bio length
-    }
-    
-    // Check for suspicious bio patterns
-    const suspiciousPatterns = [
-      /follow.*back/i, /f4f/i, /follow.*for.*follow/i,
-      /buy.*followers/i, /cheap.*likes/i, /💰/,
-      /link.*bio/i, /dm.*for/i, /click.*link/i,
-      /\.tk|\.ml|\.ga|\.cf/i, // Suspicious domains
-      /telegram|whatsapp.*\+/i, // Contact methods
-      /(^|\s)[a-z]{1,3}(\d{3,}|[a-z]*\d+)/i // Random usernames pattern
-    ];
-    
-    const bioSuspicious = suspiciousPatterns.some(pattern => pattern.test(textContent));
-    if (bioSuspicious) {
-      redFlags += 2;
-      riskFactors.push("Suspicious bio content detected");
-    }
-    
-    // FOLLOWER ANALYSIS - Very strict
-    const followerCount = profileData.followerCount || 0;
-    const followingCount = profileData.followingCount || 0;
-    
-    if (followerCount === 0) {
-      redFlags += 2;
-      riskFactors.push("Zero followers");
-    } else if (followerCount < 50) {
-      redFlags += 1;
-      riskFactors.push("Very low follower count");
-    } else if (followerCount > 100) {
-      trustScore += 10;
-    }
-    
-    // Follower-to-following ratio analysis
-    if (followingCount > followerCount * 2 && followerCount > 0) {
-      redFlags += 2;
-      riskFactors.push("Following too many compared to followers");
-    } else if (followerCount > followingCount * 10 && followingCount > 0) {
-      redFlags += 1; // Could be bought followers
-      riskFactors.push("Suspiciously high follower-to-following ratio");
-    } else if (followersToFollowing >= 0.1 && followersToFollowing <= 5) {
-      trustScore += 15; // Normal ratio
-    }
-    
-    // VERIFICATION & ACCOUNT DETAILS
-    if (profileData.verified) {
-      trustScore += 25; // Big boost for verification
-    } else {
-      redFlags += 1;
-      riskFactors.push("Account not verified");
-    }
-    
-    // Account age (if provided)
-    const accountAge = profileData.accountAge || 365;
-    if (accountAge < 30) {
-      redFlags += 3;
-      riskFactors.push("Very new account (less than 30 days)");
-    } else if (accountAge < 90) {
-      redFlags += 1;
-      riskFactors.push("Relatively new account");
-    } else {
-      trustScore += 10;
-    }
-    
-    // USERNAME ANALYSIS
-    const username = profileData.username || '';
-    const usernamePatterns = [
-      /^[a-z]+\d{4,}$/i, // name followed by many numbers
-      /^[a-z]{1,3}\d+$/i, // very short name + numbers
-      /(.)\1{3,}/, // repeated characters
-      /_+.*_+/, // multiple underscores
-      /^\w{1,4}$/ // too short
-    ];
-    
-    const usernameSuspicious = usernamePatterns.some(pattern => pattern.test(username));
-    if (usernameSuspicious) {
-      redFlags += 1;
-      riskFactors.push("Suspicious username pattern");
-    }
-    
-    // FINAL SCORE CALCULATION
-    // Apply red flag penalties severely
-    trustScore -= redFlags * 12; // Each red flag removes 12 points
-    
-    // Ensure score stays in bounds
-    trustScore = Math.min(Math.max(trustScore, 5), 95);
-    
-    // Calculate component scores for analysis
-    const textScore = Math.max(10, 85 - (bioSuspicious ? 40 : 0) - (words < 5 ? 30 : 0));
-    const metricsScore = Math.max(5, 70 - (redFlags * 10));
-    const imageScore = profileData.profilePicture ? 
-      Math.max(20, 75 - (Math.random() * 30)) : 25; // Lower without image
-    
-    const response = {
-      trustScore,
-      confidence: redFlags > 2 ? 95 : redFlags > 0 ? 85 : 75,
-      riskLevel: trustScore < 30 ? 'high' : trustScore < 60 ? 'medium' : 'low',
-      breakdown: {
-        textAnalysis: {
-          sentiment: bioSuspicious ? 'negative' : 'positive',
-          sentimentScore: bioSuspicious ? Math.floor(Math.random() * 30) + 20 : Math.floor(Math.random() * 20) + 70,
-          toxicity: bioSuspicious ? Math.floor(Math.random() * 50) + 30 : Math.floor(Math.random() * 20),
-          authenticity: textScore,
-          readability: Math.min(words * 8, 95),
-          keywords: bioSuspicious ? ['promotional', 'spam', 'suspicious'] : ['social', 'media', 'profile'],
-          languageDetected: 'English',
-          confidence: 90
-        },
-        imageAnalysis: profileData.profilePicture ? {
-          faceDetected: Math.random() > 0.3,
-          imageQuality: redFlags > 1 ? Math.floor(Math.random() * 30) + 30 : Math.floor(Math.random() * 20) + 75,
-          manipulation: redFlags > 1 ? Math.floor(Math.random() * 40) + 30 : Math.floor(Math.random() * 25),
-          metadata: {
-            originalSource: redFlags < 2,
-            dateConsistency: redFlags < 3,
-            locationConsistency: Math.random() > 0.5
-          },
-          similarImages: redFlags > 2 ? Math.floor(Math.random() * 8) + 3 : Math.floor(Math.random() * 3),
-          confidence: redFlags > 1 ? Math.floor(Math.random() * 20) + 60 : 90
-        } : null,
-        profileMetrics: {
-          accountAge,
-          followersToFollowing,
-          engagement: {
-            avgLikes: redFlags > 1 ? Math.floor(Math.random() * 10) + 2 : Math.floor(Math.random() * 50) + 20,
-            avgComments: redFlags > 1 ? Math.floor(Math.random() * 3) + 1 : Math.floor(Math.random() * 20) + 5,
-            avgShares: redFlags > 1 ? Math.floor(Math.random() * 2) : Math.floor(Math.random() * 10) + 2,
-            rate: redFlags > 1 ? Math.random() * 0.5 : Math.min((profileData.postCount || 10) / accountAge * 100, 5)
-          },
-          activityPattern: redFlags > 2 ? 'irregular' : redFlags > 0 ? 'sporadic' : 'consistent',
-          verification: {
-            email: redFlags < 2,
-            phone: profileData.verified || redFlags === 0,
-            identity: profileData.verified || false
-          },
-          riskFactors: riskFactors
-        }
-      },
-      timestamp: new Date().toISOString(),
-      profileSummary: {
-        username: profileData.username,
-        displayName: profileData.displayName || profileData.username,
-        platform: profileData.platform,
-        followerCount: profileData.followerCount,
-        verified: profileData.verified
-      }
-    };
-
-    return NextResponse.json(response);
-  } catch (error) {
-    return NextResponse.json({ error: "Analysis failed" }, { status: 500 });
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Request body must be JSON" }, { status: 400 });
   }
+
+  if (body.type !== "manual" || !isValidProfileData(body.profileData)) {
+    return NextResponse.json({ error: "profileData with at least username/bio is required" }, { status: 400 });
+  }
+  const profileData = body.profileData;
+  const fileData = body.fileData;
+
+  const combinedBioText = `${profileData.bio || ""} ${profileData.profileText || ""}`.trim();
+
+  const metricsInput: MetricsProfileInput = {
+    username: profileData.username || "",
+    displayName: profileData.displayName || profileData.username || "",
+    bio: profileData.bio || "",
+    followerCount: profileData.followerCount || 0,
+    followingCount: profileData.followingCount || 0,
+    postCount: profileData.postCount || 0,
+    hasProfilePicture: !!fileData,
+    isPrivate: !!profileData.isPrivate,
+  };
+  const metrics = computeMetricsScore(metricsInput);
+  const metricsRiskFactors = getMetricsRiskFactors(metrics);
+
+  const gemini = await analyzeWithGemini({
+    displayName: metricsInput.displayName,
+    bio: combinedBioText,
+    platform: profileData.platform || "social media",
+    imageBase64: fileData?.content,
+    imageMimeType: fileData?.type,
+  });
+
+  // Weighted combination of the two independent, real signals. Falls back
+  // to metrics-only when Gemini isn't configured/available.
+  const trustScoreFraction = gemini ? 0.5 * metrics.trustScore + 0.5 * gemini.textAuthenticityScore : metrics.trustScore;
+  const trustScore = Math.round(trustScoreFraction * 100);
+
+  const riskFactors = [...metricsRiskFactors, ...(gemini?.riskFactors || [])];
+
+  const explanation: string[] = [];
+  explanation.push(
+    trustScore >= 80
+      ? "Profile shows strong indicators of authenticity across both profile metrics and text analysis."
+      : trustScore >= 60
+        ? "Profile appears moderately trustworthy; some signals warrant a closer look."
+        : trustScore >= 40
+          ? "Profile raises several concerns based on its metrics and/or bio content."
+          : "Profile exhibits multiple risk factors associated with fake/spam accounts in the training data."
+  );
+  if (gemini?.explanation) {
+    explanation.push(gemini.explanation);
+  } else {
+    explanation.push("Text/image analysis unavailable (GEMINI_API_KEY not configured) - score is based on profile metrics only.");
+  }
+  if (metrics.contributions[0]) {
+    const top = metrics.contributions[0];
+    explanation.push(
+      `The strongest metrics-model signal for this profile was "${top.key}" (trained on ${metrics.modelMetrics.trainedOn}, ${Math.round(
+        metrics.modelMetrics.accuracy * 100
+      )}% held-out accuracy).`
+    );
+  }
+
+  const textScore = gemini ? Math.round(gemini.textAuthenticityScore * 100) : 50;
+  const imageScore = !fileData ? 0 : gemini?.imageAssessment ? (gemini.imageAssessment.looksAuthentic ? 80 : 30) : 50;
+
+  const followersToFollowing =
+    metricsInput.followingCount > 0 ? metricsInput.followerCount / metricsInput.followingCount : 0;
+  const accountAge = profileData.accountAge ?? 365;
+
+  const response = {
+    trustScore,
+    confidence: gemini ? 85 : 60,
+    riskLevel: trustScore < 40 ? "high" : trustScore < 70 ? "medium" : "low",
+    breakdown: {
+      textAnalysis: {
+        sentimentScore: textScore,
+        authenticity: textScore,
+        toxicity: Math.min(100, (gemini?.riskFactors.length || 0) * 20),
+        confidence: gemini ? 90 : 40,
+      },
+      imageAnalysis: {
+        imageProvided: !!fileData,
+        imageQuality: imageScore,
+        manipulation: fileData ? 100 - imageScore : 0,
+        confidence: !fileData ? 0 : gemini?.imageAssessment ? 80 : 40,
+        metadata: { originalSource: gemini?.imageAssessment?.looksAuthentic ?? null },
+        reasoning: !fileData
+          ? "No profile picture was provided."
+          : gemini?.imageAssessment?.reasoning || "Image was provided but could not be assessed.",
+      },
+      profileMetrics: {
+        accountAge,
+        followersToFollowing,
+        activityPattern: metrics.fakeProbability < 0.3 ? "consistent" : metrics.fakeProbability < 0.6 ? "sporadic" : "irregular",
+        engagement: {
+          rate: accountAge > 0 ? Math.min((metricsInput.postCount / accountAge) * 100, 5) : 0,
+        },
+        verification: { identity: !!profileData.verified },
+        riskFactors,
+        modelMetrics: metrics.modelMetrics,
+      },
+    },
+    timestamp: new Date().toISOString(),
+    profileSummary: {
+      username: profileData.username,
+      displayName: metricsInput.displayName,
+      platform: profileData.platform,
+      followerCount: metricsInput.followerCount,
+      verified: !!profileData.verified,
+    },
+    explanation,
+    textScore,
+    imageScore,
+    metricsScore: Math.round(metrics.trustScore * 100),
+  };
+
+  return NextResponse.json(response);
 }
 
 export async function GET() {
-  return NextResponse.json({ status: "healthy", message: "Profile Purity Detector", version: "2.0" });
+  return NextResponse.json({ status: "healthy", message: "Profile Purity Detector", version: "3.0" });
 }
