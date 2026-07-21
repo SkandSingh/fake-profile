@@ -103,7 +103,11 @@ export async function POST(request: NextRequest) {
   if (gemini?.explanation) {
     explanation.push(gemini.explanation);
   } else {
-    explanation.push("Text/image analysis unavailable (GEMINI_API_KEY not configured) - score is based on profile metrics only.");
+    explanation.push(
+      process.env.GEMINI_API_KEY
+        ? "Text/image analysis unavailable right now (Gemini call failed - see server logs) - score is based on profile metrics only."
+        : "Text/image analysis unavailable (GEMINI_API_KEY not configured) - score is based on profile metrics only."
+    );
   }
   if (metrics.contributions[0]) {
     const top = metrics.contributions[0];

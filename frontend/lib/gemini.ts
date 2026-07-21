@@ -8,7 +8,11 @@
  * on its own.
  */
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+// "-latest" aliases are maintained by Google to always point at the current
+// recommended flash model, so this doesn't need updating as specific model
+// versions get deprecated (e.g. gemini-2.5-flash stopped being available to
+// new API keys).
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-flash-latest";
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 const REQUEST_TIMEOUT_MS = 15_000;
 
@@ -93,12 +97,17 @@ export async function analyzeWithGemini(input: GeminiProfileInput): Promise<Gemi
     });
 
     if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      console.error(`[gemini] ${GEMINI_MODEL} request failed: ${response.status} ${body.slice(0, 500)}`);
       return null;
     }
 
     const data = await response.json();
     const text: string | undefined = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) return null;
+    if (!text) {
+      console.error("[gemini] response had no text content:", JSON.stringify(data).slice(0, 500));
+      return null;
+    }
 
     const parsed = JSON.parse(text);
 
@@ -114,7 +123,8 @@ export async function analyzeWithGemini(input: GeminiProfileInput): Promise<Gemi
       riskFactors: Array.isArray(parsed.riskFactors) ? parsed.riskFactors.map(String) : [],
       explanation: String(parsed.explanation || ""),
     };
-  } catch {
+  } catch (error) {
+    console.error("[gemini] request threw:", error instanceof Error ? error.message : error);
     return null;
   } finally {
     clearTimeout(timeout);
